@@ -1,7 +1,8 @@
 "use server";
 
+import { cache } from "react";
 import { db } from "./firebase";
-import { collection, getDocs, doc, getDoc, query, where, Timestamp, orderBy } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query, where, Timestamp, orderBy, documentId } from "firebase/firestore";
 import type { Channel, Match, ChannelOption } from "@/types";
 import { placeholderChannels, placeholderMatches } from "./placeholder-data";
 
@@ -11,7 +12,7 @@ const useFallbackData = () => {
   return placeholderChannels;
 };
 
-export async function getChannels(): Promise<Channel[]> {
+export const getChannels = cache(async (): Promise<Channel[]> => {
   try {
     const channelsCollection = collection(db, "channels");
     const channelSnapshot = await getDocs(channelsCollection);
@@ -30,9 +31,9 @@ export async function getChannels(): Promise<Channel[]> {
     console.error("Error al obtener canales de Firebase:", error);
     return useFallbackData();
   }
-}
+});
 
-export async function getChannelById(id: string): Promise<Channel | null> {
+export const getChannelById = cache(async (id: string): Promise<Channel | null> => {
   try {
     const channelDoc = doc(db, "channels", id);
     const channelSnapshot = await getDoc(channelDoc);
@@ -56,34 +57,65 @@ export async function getChannelById(id: string): Promise<Channel | null> {
       }
     return null;
   }
-}
+});
 
-export async function getCategories(): Promise<string[]> {
+export const getChannelsByIds = async (ids: string[]): Promise<Channel[]> => {
+  if (!ids || ids.length === 0) {
+    return [];
+  }
+
+  try {
+    // Firestore 'in' query is limited to 30 elements in Next.js 14, so we chunk the IDs.
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += 30) {
+        chunks.push(ids.slice(i, i + 30));
+    }
+
+    const firestoreChannels: Channel[] = [];
+    for (const chunk of chunks) {
+        const q = query(collection(db, "channels"), where(documentId(), "in", chunk));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(doc => {
+            firestoreChannels.push({ id: doc.id, ...doc.data() } as Channel);
+        });
+    }
+    
+    // To preserve the original order of IDs from the input array
+    const firestoreChannelMap = new Map(firestoreChannels.map(c => [c.id, c]));
+    return ids.map(id => firestoreChannelMap.get(id)).filter((c): c is Channel => !!c);
+
+  } catch (error) {
+    console.error("Error fetching channels by IDs from Firebase:", error);
+    // Fallback to placeholder data for any matching IDs
+    const allPlaceholderChannels = placeholderChannels;
+    const placeholderMap = new Map(allPlaceholderChannels.map(c => [c.id, c]));
+    return ids.map(id => placeholderMap.get(id)).filter((c): c is Channel => !!c);
+  }
+};
+
+export const getCategories = cache(async (): Promise<string[]> => {
   const channels = await getChannels();
   const categories = new Set(channels.map(channel => channel.category));
   return Array.from(categories).sort();
-}
+});
 
-export async function getChannelsByCategory(category: string, excludeId?: string): Promise<Channel[]> {
+export const getChannelsByCategory = cache(async (category: string, excludeId?: string): Promise<Channel[]> => {
   const allChannels = await getChannels();
   return allChannels.filter(channel => {
     const isSameCategory = channel.category === category;
     const isNotExcluded = excludeId ? channel.id !== excludeId : true;
     return isSameCategory && isNotExcluded;
   }).slice(0, 5); // Return a max of 5 related channels
-}
+});
 
-export async function getTodaysMatches(): Promise<Match[]> {
+export const getTodaysMatches = cache(async (): Promise<Match[]> => {
   const now = new Date();
-  // Get the current date string in Argentina's timezone (e.g., "2024-07-25") to define "today"
   const todayARTStr = now.toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' });
 
-  // Create Date objects for start and end of day in Argentina, represented in UTC for the query
   const startOfDay = new Date(`${todayARTStr}T00:00:00.000-03:00`);
   const endOfDay = new Date(`${todayARTStr}T23:59:59.999-03:00`);
 
   const processMatches = (matchDocs: any[], channelsMap: Map<string, Channel>): Match[] => {
-    // Matches are still relevant up to 2.5 hours after they started.
     const matchExpiration = new Date(now.getTime() - (2.5 * 60 * 60 * 1000));
 
     return matchDocs
@@ -121,7 +153,7 @@ export async function getTodaysMatches(): Promise<Match[]> {
         } as Match;
       })
       .filter((match): match is Match => match !== null)
-      .sort((a, b) => a.time.localeCompare(b.time));
+      .sort((a, b) => a.matchTimestamp.getTime() - b.matchTimestamp.getTime());
   };
 
   try {
@@ -152,4 +184,4 @@ export async function getTodaysMatches(): Promise<Match[]> {
     const channelsMap = new Map(allChannels.map(c => [c.id, c]));
     return processMatches(placeholderMatches, channelsMap);
   }
-}
+});
