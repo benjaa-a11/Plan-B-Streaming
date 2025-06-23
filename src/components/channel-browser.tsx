@@ -17,11 +17,12 @@ export default function ChannelBrowser({
 
   const filteredChannels = useMemo(() => {
     return channels.filter((channel) => {
+      if (!channel) return false;
       const matchesCategory =
         selectedCategory === "Todos" || channel.category === selectedCategory;
       const matchesSearch =
-        channel.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        channel.description.toLowerCase().includes(searchTerm.toLowerCase());
+        (channel.name?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
+        (channel.description?.toLowerCase() ?? "").includes(searchTerm.toLowerCase());
       return matchesCategory && matchesSearch;
     });
   }, [channels, searchTerm, selectedCategory]);

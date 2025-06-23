@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Heart, SignalZero, Loader2 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 
 import type { Channel } from "@/types";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -21,6 +21,48 @@ type ChannelViewProps = {
 
 const STREAM_LOAD_TIMEOUT = 12000; // 12 seconds
 
+/**
+ * Converts various YouTube URL formats into a standard embeddable URL.
+ * This allows using regular YouTube links in the database.
+ * @param url The original URL from the database.
+ * @returns A standardized YouTube embed URL or the original URL if not a YouTube link.
+ */
+const getStreamableUrl = (url: string): string => {
+    if (!url) return '';
+    
+    let videoId: string | null = null;
+    try {
+      const urlObj = new URL(url);
+      if (urlObj.hostname.includes('youtube.com')) {
+        if (urlObj.pathname.startsWith('/embed/')) {
+          // It's already an embed link, we just rebuild it to standardize params.
+          videoId = urlObj.pathname.split('/')[2];
+        } else if (urlObj.pathname === '/watch') {
+          videoId = urlObj.searchParams.get('v');
+        }
+      } else if (urlObj.hostname === 'youtu.be') {
+        // For youtu.be links, the ID is in the pathname.
+        videoId = urlObj.pathname.substring(1).split('?')[0];
+      }
+    } catch (error) {
+      // If URL parsing fails, it's not a standard URL. Assume it's a direct iframe src.
+      return url;
+    }
+  
+    if (videoId) {
+      // Standardize the embed URL with desired parameters.
+      const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`);
+      embedUrl.searchParams.set('autoplay', '1');
+      embedUrl.searchParams.set('modestbranding', '1');
+      embedUrl.searchParams.set('iv_load_policy', '3');
+      return embedUrl.toString();
+    }
+    
+    // If it's not a recognized YouTube URL, return it as is.
+    return url;
+  };
+
+
 export default function ChannelView({ channel, relatedChannels }: ChannelViewProps) {
   const { isFavorite, addFavorite, removeFavorite, isLoaded } = useFavorites();
   const { toast } = useToast();
@@ -32,7 +74,11 @@ export default function ChannelView({ channel, relatedChannels }: ChannelViewPro
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isFav = isFavorite(channel.id);
-  const streamLinks = channel.streamUrl || [];
+  
+  const streamLinks = useMemo(
+    () => (channel.streamUrl || []).map(getStreamableUrl),
+    [channel.streamUrl]
+  );
   const currentStreamUrl = streamLinks[currentStreamIndex];
 
   useEffect(() => {
@@ -73,7 +119,7 @@ export default function ChannelView({ channel, relatedChannels }: ChannelViewPro
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [currentStreamIndex, streamLinks, channel.id, toast]);
+  }, [currentStreamIndex, streamLinks, channel.id, toast, currentStreamUrl]);
 
   const handleFavoriteClick = () => {
     if (isFav) {
@@ -114,7 +160,7 @@ export default function ChannelView({ channel, relatedChannels }: ChannelViewPro
           </div>
         )}
         <iframe
-          key={currentStreamIndex}
+          key={currentStreamUrl}
           className="h-full w-full border-0"
           src={currentStreamUrl}
           title={channel.name}
