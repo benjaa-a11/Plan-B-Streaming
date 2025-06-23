@@ -21,7 +21,7 @@ export default function BottomNav() {
   }, []);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-background/95 backdrop-blur-sm md:hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-background/95 backdrop-blur-sm md:hidden pb-safe-bottom">
       <nav className="flex h-16 items-center justify-around">
         {navItems.map((item) => {
           const isActive = isClient && ((pathname === '/' && item.href === '/') || (item.href !== '/' && pathname.startsWith(item.href)));

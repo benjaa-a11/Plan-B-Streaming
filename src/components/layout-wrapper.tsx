@@ -12,7 +12,7 @@ export default function LayoutWrapper({ children }: { children: ReactNode }) {
   return (
     <>
       {!isChannelPage && <Header />}
-      <main className={`flex-1 ${isChannelPage ? '' : 'pb-20 md:pb-0'}`}>
+      <main className={`flex-1 ${isChannelPage ? '' : 'pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0'}`}>
         {children}
       </main>
       {!isChannelPage && <BottomNav />}

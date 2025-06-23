@@ -105,7 +105,7 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur-sm pt-safe-top">
       <div className="container flex h-16 items-center gap-4">
         <div className="flex-none">
           <Logo />

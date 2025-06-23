@@ -2,19 +2,19 @@ import type { Channel } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
 import { Clapperboard, PlayCircle } from "lucide-react";
+import { memo } from "react";
 
 type ChannelCardProps = {
   channel: Channel;
   index: number;
 };
 
-export default function ChannelCard({ channel, index }: ChannelCardProps) {
+const ChannelCard = memo(function ChannelCard({ channel, index }: ChannelCardProps) {
   return (
     <Link 
       href={`/canal/${channel.id}`} 
-      className="group block outline-none opacity-0 animate-fade-in-up rounded-lg overflow-hidden transition-all duration-300 bg-card border hover:shadow-primary/30 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group block outline-none rounded-lg overflow-hidden transition-all duration-300 bg-card border hover:shadow-primary/30 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       title={channel.name}
-      style={{ animationDelay: `${index * 50}ms` }}
     >
         <div className="aspect-video w-full relative bg-muted/50 flex items-center justify-center">
           
@@ -46,4 +46,6 @@ export default function ChannelCard({ channel, index }: ChannelCardProps) {
       </div>
     </Link>
   );
-}
+});
+
+export default ChannelCard;
