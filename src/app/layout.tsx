@@ -16,6 +16,10 @@ const fontSans = Inter({
 export const metadata: Metadata = {
   title: "Plan B Streaming",
   description: "Tu alternativa para ver televisión en vivo.",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
