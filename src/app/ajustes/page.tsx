@@ -3,7 +3,7 @@
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Moon, Sun, Monitor, Trash2 } from "lucide-react";
+import { Moon, Sun, Monitor, Trash2, Download, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +19,16 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+
+// The event type is not standard in TS yet, so we define it.
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: Array<string>;
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed',
+    platform: string,
+  }>;
+  prompt(): Promise<void>;
+}
 
 function SettingsPageSkeleton() {
   return (
@@ -49,6 +59,23 @@ function SettingsPageSkeleton() {
           <CardContent>
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+              <Skeleton className="h-10 w-28 rounded-md" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-7 w-48 rounded-md" />
+            <div className="space-y-2 mt-2">
+              <Skeleton className="h-4 w-full max-w-lg" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-2">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-4 w-72" />
               </div>
@@ -66,8 +93,26 @@ export default function SettingsPage() {
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
 
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+
   useEffect(() => {
     setIsClient(true);
+    
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsStandalone(true);
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
 
   const themeOptions = [
@@ -91,6 +136,17 @@ export default function SettingsPage() {
         title: "Error",
         description: "No se pudieron borrar los datos. Por favor, inténtalo de nuevo.",
       });
+    }
+  };
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    
+    await installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+      setIsStandalone(true);
     }
   };
 
@@ -125,6 +181,54 @@ export default function SettingsPage() {
                 </Button>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Instalar Aplicación</CardTitle>
+            <CardDescription>
+              Añade Plan B a tu pantalla de inicio para una experiencia más rápida y completa.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isStandalone ? (
+              <div className="flex items-center gap-4 rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-green-600 dark:text-green-400">
+                <CheckCircle className="h-6 w-6 flex-shrink-0" />
+                <div>
+                  <h4 className="font-semibold">Aplicación Instalada</h4>
+                  <p className="text-sm text-green-600/80 dark:text-green-400/80">
+                    Ya estás disfrutando de la experiencia de pantalla completa.
+                  </p>
+                </div>
+              </div>
+            ) : installPrompt ? (
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <h4 className="font-semibold">Disponible para instalar</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Acceso directo desde tu pantalla de inicio.
+                  </p>
+                </div>
+                <Button onClick={handleInstallClick}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Instalar
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <h4 className="font-semibold text-muted-foreground">No disponible</h4>
+                  <p className="text-sm text-muted-foreground">
+                    La instalación no está disponible en este navegador o la app ya fue instalada.
+                  </p>
+                </div>
+                <Button disabled>
+                  <Download className="mr-2 h-4 w-4" />
+                  Instalar
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
