@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from 'next/font/google';
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,25 @@ const fontSans = Inter({
 export const metadata: Metadata = {
   title: "Plan B Streaming",
   description: "Tu alternativa para ver televisión en vivo.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Plan B Streaming",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#030617' },
+  ],
 };
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
 
 export default async function RootLayout({
   children,

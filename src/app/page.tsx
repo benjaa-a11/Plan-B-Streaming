@@ -2,7 +2,7 @@ import { getChannels, getTodaysMatches } from "@/lib/actions";
 import ChannelBrowser from "@/components/channel-browser";
 import MdcHero from "@/components/mdc-hero";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // Revalidate every 60 seconds
 
 export default async function Home() {
   const [channels, matches] = await Promise.all([
