@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Heart, SignalZero, Loader2 } from "lucide-react";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, memo } from "react";
 
 import type { Channel } from "@/types";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -63,7 +63,7 @@ const getStreamableUrl = (url: string): string => {
   };
 
 
-export default function ChannelView({ channel, relatedChannels }: ChannelViewProps) {
+const ChannelView = memo(function ChannelView({ channel, relatedChannels }: ChannelViewProps) {
   const { isFavorite, addFavorite, removeFavorite, isLoaded } = useFavorites();
   const { toast } = useToast();
 
@@ -73,7 +73,7 @@ export default function ChannelView({ channel, relatedChannels }: ChannelViewPro
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isFav = isFavorite(channel.id);
+  const isFav = isLoaded ? isFavorite(channel.id) : false;
   
   const streamLinks = useMemo(
     () => (channel.streamUrl || []).map(getStreamableUrl),
@@ -237,4 +237,6 @@ export default function ChannelView({ channel, relatedChannels }: ChannelViewPro
        </div>
     </div>
   );
-}
+});
+
+export default ChannelView;
