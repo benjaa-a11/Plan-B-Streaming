@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   title: "Plan B Streaming",
   description: "Tu alternativa para ver televisión en vivo.",
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/icon.png",
+    apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
