@@ -24,4 +24,6 @@ export type Match = {
   channels: ChannelOption[];
   matchDetails?: string;
   matchTimestamp: Date;
+  tournamentName: string;
+  tournamentLogo: string | { light: string; dark: string };
 };
