@@ -3,7 +3,7 @@
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Moon, Sun, Monitor, Trash2, Download, CheckCircle } from "lucide-react";
+import { Moon, Sun, Monitor, Trash2, Download, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -125,16 +125,34 @@ export default function SettingsPage() {
     try {
       localStorage.removeItem('plan-b-favorites');
       toast({
-        title: "Datos eliminados",
-        description: "Tus canales favoritos han sido borrados exitosamente.",
+        title: (
+          <div className="flex items-start gap-3">
+            <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-foreground">Favoritos eliminados</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Los datos de tus canales favoritos han sido borrados.
+              </p>
+            </div>
+          </div>
+        ),
       });
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
       console.error("Failed to clear favorites from localStorage", error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "No se pudieron borrar los datos. Por favor, inténtalo de nuevo.",
+        title: (
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-destructive-foreground flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-destructive-foreground">Error al borrar</p>
+              <p className="text-sm text-destructive-foreground/80 mt-1">
+                No se pudieron borrar los datos. Por favor, inténtalo de nuevo.
+              </p>
+            </div>
+          </div>
+        ),
       });
     }
   };
