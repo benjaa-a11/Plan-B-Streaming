@@ -63,7 +63,7 @@ const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
             const kickoffTime = new Date(match.matchTimestamp);
             const minutesUntilKickoff = (kickoffTime.getTime() - now.getTime()) / (1000 * 60);
             
-            const shouldBeViewable = match.isLive || minutesUntilKickoff <= 45;
+            const shouldBeViewable = match.isLive || minutesUntilKickoff <= 30;
             
             setIsViewable(shouldBeViewable);
         };
@@ -251,14 +251,20 @@ export default function MatchesHero({ matches }: MatchesHeroProps) {
                 <h1 className="text-3xl font-bold tracking-tight">Partidos de Hoy</h1>
                 <p className="text-muted-foreground">La agenda del día en un solo lugar.</p>
             </div>
-            <ScrollArea className="w-full whitespace-nowrap rounded-lg">
-                <div className="flex w-max space-x-4 pb-4">
-                    {matches.map((match) => (
-                        <MatchCard key={match.id} match={match} />
-                    ))}
+            {matches.length > 1 ? (
+                <ScrollArea className="w-full whitespace-nowrap rounded-lg">
+                    <div className="flex w-max space-x-4 pb-4">
+                        {matches.map((match) => (
+                            <MatchCard key={match.id} match={match} />
+                        ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+            ) : (
+                <div className="flex justify-center">
+                    <MatchCard match={matches[0]} />
                 </div>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            )}
         </div>
     );
 }
