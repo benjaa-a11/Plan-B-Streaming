@@ -12,7 +12,7 @@ export default function LayoutWrapper({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <DataRefresher />
+      {!isChannelPage && <DataRefresher />}
       {!isChannelPage && <Header />}
       <main className={`flex-1 ${isChannelPage ? '' : 'pb-20 md:pb-0'}`}>
         {children}
