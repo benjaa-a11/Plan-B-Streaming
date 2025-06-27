@@ -159,7 +159,9 @@ export const getHeroMatches = async (): Promise<Match[]> => {
   }
 
   const now = new Date();
-  const matchExpiration = new Date(now.getTime() - (3 * 60 * 60 * 1000));
+  // A match is considered expired 2 hours and 15 minutes after it starts.
+  const twoHoursFifteenMinutes = 2 * 60 * 60 * 1000 + 15 * 60 * 1000;
+  const matchExpiration = new Date(now.getTime() - twoHoursFifteenMinutes);
   
   const validMatches = allRawMatches.filter(matchData => {
     const matchTimestamp = matchData.matchTimestamp?.toDate ? matchData.matchTimestamp.toDate() : new Date(matchData.matchTimestamp);
