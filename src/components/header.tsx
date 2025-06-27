@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tv2, Search, ListFilter, Settings, Heart } from "lucide-react";
+import { Search, ListFilter, Settings, Heart } from "lucide-react";
 import { useChannelFilters } from "@/hooks/use-channel-filters";
 import { useState, useEffect } from "react";
 
@@ -21,7 +22,7 @@ const Logo = () => (
     className="flex items-center gap-2"
     aria-label="Volver a la página de inicio"
   >
-    <Tv2 className="h-8 w-8 text-primary" />
+    <Image src="/icon.png" alt="Plan B Streaming Logo" width={32} height={32} />
   </Link>
 );
 

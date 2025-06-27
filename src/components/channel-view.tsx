@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Heart, Loader2, SwitchCamera } from "lucide-react";
-import { useState, useEffect, useMemo, memo } from "react";
+import { ArrowLeft, Heart, SwitchCamera, VideoOff } from "lucide-react";
+import { useState, useMemo, memo } from "react";
 
 import type { Channel } from "@/types";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -61,7 +61,6 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
   const { toast } = useToast();
 
   const [currentStreamIndex, setCurrentStreamIndex] = useState(0);
-  const [isPlayerLoading, setIsPlayerLoading] = useState(true);
 
   const isFav = isLoaded ? isFavorite(channel.id) : false;
   
@@ -70,10 +69,6 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
     [channel.streamUrl]
   );
   const currentStreamUrl = streamLinks[currentStreamIndex];
-
-  useEffect(() => {
-    setIsPlayerLoading(true);
-  }, [channel.id, currentStreamUrl]);
 
   const handleFavoriteClick = () => {
     if (isFav) {
@@ -87,48 +82,20 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
     const nextIndex = (currentStreamIndex + 1) % streamLinks.length;
     setCurrentStreamIndex(nextIndex);
     toast({
-      title: "Cambiando de fuente",
-      description: `Cargando Opción ${nextIndex + 1} de ${streamLinks.length}...`,
-      duration: 3000,
+      title: (
+        <div className="flex items-start gap-3">
+          <SwitchCamera className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-foreground">Fuente Cambiada</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Se ha seleccionado la Opción {nextIndex + 1} de {streamLinks.length}.
+            </p>
+          </div>
+        </div>
+      ),
+      duration: 4000,
     });
   };
-  
-  const handleIframeLoad = () => {
-    setIsPlayerLoading(false);
-  };
-
-  const renderPlayer = () => {
-    if (!currentStreamUrl) {
-      return (
-        <div className="flex h-full w-full flex-col items-center justify-center bg-card p-8 text-center">
-          <p className="mt-2 max-w-md text-muted-foreground">
-            Este canal no tiene una fuente de transmisión configurada.
-          </p>
-        </div>
-      );
-    }
-
-    return (
-      <>
-        {isPlayerLoading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="mt-4 text-primary-foreground">Cargando señal...</p>
-            {streamLinks.length > 1 && <p className="text-sm text-muted-foreground">Opción {currentStreamIndex + 1} de {streamLinks.length}</p>}
-          </div>
-        )}
-        <iframe
-          key={currentStreamUrl}
-          className="h-full w-full border-0"
-          src={currentStreamUrl}
-          title={channel.name}
-          onLoad={handleIframeLoad}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-        ></iframe>
-      </>
-    );
-  }
 
   return (
     <div className="flex h-dvh w-full flex-col">
@@ -142,7 +109,7 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
           <div className="flex items-center gap-3">
              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md">
                 {channel.logoUrl ? (
-                    <Image src={channel.logoUrl} alt={`Logo de ${channel.name}`} fill className="object-contain"/>
+                    <Image src={channel.logoUrl} alt={`Logo de ${channel.name}`} fill className="object-contain" sizes="40px"/>
                 ) : (
                     <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold">{channel.name.charAt(0)}</div>
                 )}
@@ -173,7 +140,24 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
          <div className="container mx-auto p-4 md:p-8">
             <main>
               <div className="aspect-video relative w-full overflow-hidden rounded-lg bg-black shadow-2xl shadow-primary/10">
-                {renderPlayer()}
+                 {currentStreamUrl ? (
+                  <iframe
+                    key={currentStreamUrl}
+                    src={currentStreamUrl}
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    className="h-full w-full border-0"
+                    title={`Reproductor de ${channel.name}`}
+                  ></iframe>
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center bg-card p-8 text-center">
+                    <VideoOff className="h-20 w-20 text-muted-foreground/50 mb-4" />
+                    <h3 className="text-xl font-bold">Transmisión no disponible</h3>
+                    <p className="max-w-md text-muted-foreground">
+                      Este canal no tiene una fuente de transmisión configurada.
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="mt-6 rounded-lg bg-card p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -186,10 +170,9 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
                       variant="secondary"
                       size="sm"
                       onClick={handleSwitchStream}
-                      disabled={isPlayerLoading}
                       className="w-9 shrink-0 p-0 sm:w-auto sm:px-3"
                     >
-                      <SwitchCamera className="h-4 w-4" />
+                      <SwitchCamera className="h-4 w-4 sm:mr-2" />
                       <span className="hidden sm:inline">Cambiar Fuente</span>
                     </Button>
                   )}
