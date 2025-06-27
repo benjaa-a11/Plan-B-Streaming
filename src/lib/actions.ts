@@ -1,6 +1,5 @@
 "use server";
 
-import { cache } from "react";
 import { db } from "./firebase";
 import { collection, getDocs, doc, getDoc, query, where, Timestamp, orderBy, documentId } from "firebase/firestore";
 import type { Channel, Match, ChannelOption } from "@/types";
@@ -12,7 +11,7 @@ const useFallbackData = () => {
   return placeholderChannels;
 };
 
-export const getChannels = cache(async (): Promise<Channel[]> => {
+export const getChannels = async (): Promise<Channel[]> => {
   try {
     const channelsCollection = collection(db, "channels");
     const channelSnapshot = await getDocs(channelsCollection);
@@ -31,9 +30,9 @@ export const getChannels = cache(async (): Promise<Channel[]> => {
     console.error("Error al obtener canales de Firebase:", error);
     return useFallbackData();
   }
-});
+};
 
-export const getChannelById = cache(async (id: string): Promise<Channel | null> => {
+export const getChannelById = async (id: string): Promise<Channel | null> => {
   try {
     const channelDoc = doc(db, "channels", id);
     const channelSnapshot = await getDoc(channelDoc);
@@ -57,7 +56,7 @@ export const getChannelById = cache(async (id: string): Promise<Channel | null> 
       }
     return null;
   }
-});
+};
 
 export const getChannelsByIds = async (ids: string[]): Promise<Channel[]> => {
   if (!ids || ids.length === 0) {
@@ -93,20 +92,20 @@ export const getChannelsByIds = async (ids: string[]): Promise<Channel[]> => {
   }
 };
 
-export const getCategories = cache(async (): Promise<string[]> => {
+export const getCategories = async (): Promise<string[]> => {
   const channels = await getChannels();
   const categories = new Set(channels.map(channel => channel.category));
   return Array.from(categories).sort();
-});
+};
 
-export const getChannelsByCategory = cache(async (category: string, excludeId?: string): Promise<Channel[]> => {
+export const getChannelsByCategory = async (category: string, excludeId?: string): Promise<Channel[]> => {
   const allChannels = await getChannels();
   return allChannels.filter(channel => {
     const isSameCategory = channel.category === category;
     const isNotExcluded = excludeId ? channel.id !== excludeId : true;
     return isSameCategory && isNotExcluded;
   }).slice(0, 5); // Return a max of 5 related channels
-});
+};
 
 const fetchRawMatchesForTournament = async (collectionName: string): Promise<any[]> => {
   try {
@@ -129,7 +128,7 @@ const fetchRawMatchesForTournament = async (collectionName: string): Promise<any
   }
 }
 
-export const getHeroMatches = cache(async (): Promise<Match[]> => {
+export const getHeroMatches = async (): Promise<Match[]> => {
   const tournamentConfigs = [
     {
       collectionName: 'mdc25',
@@ -205,4 +204,4 @@ export const getHeroMatches = cache(async (): Promise<Match[]> => {
   processedMatches.sort((a, b) => a.matchTimestamp.getTime() - b.matchTimestamp.getTime());
   
   return processedMatches;
-});
+};
