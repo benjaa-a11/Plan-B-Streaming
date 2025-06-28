@@ -23,7 +23,7 @@ export function MovieFilterProvider({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
 
-  const allCategories = useMemo(() => ['Todas', ...initialCategories], [initialCategories]);
+  const allCategories = useMemo(() => ['Todos', ...initialCategories], [initialCategories]);
 
   const value = {
     searchTerm,
