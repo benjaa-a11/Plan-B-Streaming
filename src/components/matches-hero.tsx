@@ -3,7 +3,7 @@ import type { Match } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "./ui/button";
-import { Clock, Tv, VideoOff, Clapperboard, Radio, Timer } from "lucide-react";
+import { Clock, Tv, VideoOff, Clapperboard, Radio } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +32,6 @@ type MatchesHeroProps = {
 };
 
 const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
-    const [isViewable, setIsViewable] = useState(false);
     const { theme } = useTheme();
     const [tournamentLogoUrl, setTournamentLogoUrl] = useState<string>('');
     const [isClient, setIsClient] = useState(false);
@@ -54,31 +53,16 @@ const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
             currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         
-        setTournamentLogoUrl(currentTheme === 'dark' ? match.tournamentLogo.dark : match.tournamentLogo.light);
+        if (match.tournamentLogo) {
+            setTournamentLogoUrl(currentTheme === 'dark' ? match.tournamentLogo.dark : match.tournamentLogo.light);
+        }
     }, [theme, match.tournamentLogo, isClient]);
 
-    useEffect(() => {
-        const checkViewability = () => {
-            const now = new Date();
-            const kickoffTime = new Date(match.matchTimestamp);
-            const minutesUntilKickoff = (kickoffTime.getTime() - now.getTime()) / (1000 * 60);
-            
-            const shouldBeViewable = match.isLive || minutesUntilKickoff <= 30;
-            
-            setIsViewable(shouldBeViewable);
-        };
-        
-        checkViewability();
-        const intervalId = setInterval(checkViewability, 30000);
-
-        return () => clearInterval(intervalId);
-    }, [match.matchTimestamp, match.isLive]);
-
     const renderButton = () => {
-        if (!isViewable) {
+        if (!match.isWatchable) {
             return (
-                <Button className="w-full" disabled variant="secondary">
-                    <Timer className="mr-2 h-4 w-4" />
+                <Button className="w-full" disabled>
+                    <Clock className="mr-2 h-4 w-4" />
                     Próximamente
                 </Button>
             );
@@ -188,14 +172,14 @@ const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
             <CardContent className="p-6 flex flex-col items-center justify-center">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col items-center gap-2 text-center w-[100px]">
-                        <Image src={match.team1Logo} alt={match.team1} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
+                        <Image src={match.team1Logo || ''} alt={match.team1} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
                         <h3 className="font-semibold truncate w-full">{match.team1}</h3>
                     </div>
                     <div className="h-12 w-12 flex-shrink-0 flex items-center justify-center">
                         {!isClient || !tournamentLogoUrl ? (
                             <Skeleton className="h-12 w-12 rounded-md" />
                         ) : (
-                            <Image
+                             match.tournamentLogo && <Image
                                 src={tournamentLogoUrl}
                                 alt={`${match.tournamentName} Logo`}
                                 width={48}
@@ -207,7 +191,7 @@ const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
                         )}
                     </div>
                     <div className="flex flex-col items-center gap-2 text-center w-[100px]">
-                        <Image src={match.team2Logo} alt={match.team2} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
+                        <Image src={match.team2Logo || ''} alt={match.team2} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
                         <h3 className="font-semibold truncate w-full">{match.team2}</h3>
                     </div>
                 </div>
