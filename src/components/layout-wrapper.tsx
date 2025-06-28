@@ -8,16 +8,16 @@ import DataRefresher from '@/components/data-refresher';
 
 export default function LayoutWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isChannelPage = pathname.startsWith('/canal/');
+  const isPlayerPage = pathname.startsWith('/canal/') || pathname.startsWith('/pelicula/');
 
   return (
     <>
-      {!isChannelPage && <DataRefresher />}
-      {!isChannelPage && <Header />}
-      <main className={`flex-1 ${isChannelPage ? '' : 'pb-20 md:pb-0'}`}>
+      {!isPlayerPage && <DataRefresher />}
+      {!isPlayerPage && <Header />}
+      <main className={`flex-1 ${isPlayerPage ? '' : 'pb-20 md:pb-0'}`}>
         {children}
       </main>
-      {!isChannelPage && <BottomNav />}
+      {!isPlayerPage && <BottomNav />}
     </>
   );
 }

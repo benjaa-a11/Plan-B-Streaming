@@ -12,8 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ListFilter, Settings, Heart } from "lucide-react";
+import { Search, ListFilter, Settings, Heart, Popcorn } from "lucide-react";
 import { useChannelFilters } from "@/hooks/use-channel-filters";
+import { useMovieFilters } from "@/hooks/use-movie-filters";
 import { useState, useEffect } from "react";
 
 const Logo = () => (
@@ -26,7 +27,7 @@ const Logo = () => (
   </Link>
 );
 
-function Filters() {
+function ChannelFilters() {
   const {
     searchTerm,
     setSearchTerm,
@@ -41,7 +42,7 @@ function Filters() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Buscar..."
+          placeholder="Buscar canal..."
           className="pl-10 h-10 w-full text-sm bg-muted border-transparent focus:bg-background focus:border-input"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -68,11 +69,57 @@ function Filters() {
   );
 }
 
+function MovieFilters() {
+  const {
+    searchTerm,
+    setSearchTerm,
+    selectedCategory,
+    setSelectedCategory,
+    allCategories,
+  } = useMovieFilters();
+
+  return (
+    <div className="flex w-full items-center gap-2 max-w-md mx-auto">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder="Buscar película..."
+          className="pl-10 h-10 w-full text-sm bg-muted border-transparent focus:bg-background focus:border-input"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          aria-label="Buscar película"
+        />
+      </div>
+
+      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+        <SelectTrigger
+          className="h-10 w-auto shrink-0 px-3 flex items-center justify-center bg-muted border-transparent focus:bg-background focus:border-input gap-2"
+          aria-label="Filtrar por categoría"
+        >
+          <ListFilter className="h-5 w-5 text-muted-foreground" />
+          <span className="hidden sm:inline text-muted-foreground">{selectedCategory}</span>
+        </SelectTrigger>
+        <SelectContent>
+          {allCategories.map((category) => (
+            <SelectItem key={category} value={category}>
+              {category}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 const HeaderContent = () => {
   const pathname = usePathname();
 
   if (pathname === "/") {
-    return <Filters />;
+    return <ChannelFilters />;
+  }
+  if (pathname.startsWith('/peliculas')) {
+    return <MovieFilters />;
   }
   if (pathname.startsWith('/favoritos')) {
     return (
@@ -102,17 +149,17 @@ export default function Header() {
   }, []);
 
   if (!isClient) {
-    return <header className="sticky top-0 z-40 w-full h-16 border-b border-border/40 bg-background/95 backdrop-blur-sm" />;
+    return <header className="sticky top-0 z-40 w-full h-16 border-b border-border/40 bg-background/95 backdrop-blur-sm pt-safe-top" />;
   }
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur-sm pt-safe-top">
       <div className="container flex h-16 items-center gap-4">
-        {pathname === "/" && (
+        {pathname === "/" || pathname.startsWith('/peliculas') ? (
           <div className="flex-none">
             <Logo />
           </div>
-        )}
+        ) : null}
 
         <div className="flex flex-1 items-center">
           <HeaderContent />
@@ -120,6 +167,12 @@ export default function Header() {
         
         <div className="flex-none">
             <nav className="hidden items-center md:flex">
+              <Button asChild variant={pathname.startsWith('/peliculas') ? "secondary" : "ghost"}>
+                <Link href="/peliculas">
+                  <Popcorn className="h-5 w-5 mr-2" />
+                  Películas
+                </Link>
+              </Button>
               <Button asChild variant={pathname.startsWith('/favoritos') ? "secondary" : "ghost"}>
                 <Link href="/favoritos">
                   <Heart className="h-5 w-5 mr-2" />

@@ -252,4 +252,3 @@ export default function MatchesHero({ matches }: MatchesHeroProps) {
         </div>
     );
 }
- 
