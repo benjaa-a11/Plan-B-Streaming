@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 
-type FilterContextType = {
+type MovieFilterContextType = {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   selectedCategory: string;
@@ -11,9 +11,9 @@ type FilterContextType = {
   allCategories: string[];
 };
 
-const FilterContext = createContext<FilterContextType | undefined>(undefined);
+const MovieFilterContext = createContext<MovieFilterContextType | undefined>(undefined);
 
-export function ChannelFilterProvider({
+export function MovieFilterProvider({
   children,
   initialCategories = [],
 }: {
@@ -21,9 +21,9 @@ export function ChannelFilterProvider({
   initialCategories: string[];
 }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Todos');
+  const [selectedCategory, setSelectedCategory] = useState('Todas');
 
-  const allCategories = useMemo(() => ['Todos', ...initialCategories], [initialCategories]);
+  const allCategories = useMemo(() => ['Todas', ...initialCategories], [initialCategories]);
 
   const value = {
     searchTerm,
@@ -33,13 +33,13 @@ export function ChannelFilterProvider({
     allCategories,
   };
 
-  return React.createElement(FilterContext.Provider, { value }, children);
+  return React.createElement(MovieFilterContext.Provider, { value }, children);
 }
 
-export function useChannelFilters() {
-  const context = useContext(FilterContext);
+export function useMovieFilters() {
+  const context = useContext(MovieFilterContext);
   if (context === undefined) {
-    throw new Error('useChannelFilters must be used within a ChannelFilterProvider');
+    throw new Error('useMovieFilters must be used within a MovieFilterProvider');
   }
   return context;
 }
