@@ -28,3 +28,14 @@ export type Match = {
   tournamentName?: string;
   tournamentLogo?: string | { light: string; dark: string };
 };
+
+export type Movie = {
+  id: string;
+  title: string;
+  posterUrl: string;
+  streamUrl: string;
+  category: string;
+  description: string;
+  year: number;
+  duration: string;
+};
