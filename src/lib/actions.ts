@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "./firebase";
-import { collection, getDocs, doc, getDoc, query, where, Timestamp, orderBy, documentId } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query, where, documentId, Timestamp } from "firebase/firestore";
 import type { Channel, Match, ChannelOption } from "@/types";
 import { placeholderChannels } from "./placeholder-data";
 
@@ -14,7 +14,7 @@ const useFallbackData = () => {
 export const getChannels = async (): Promise<Channel[]> => {
   try {
     const channelsCollection = collection(db, "channels");
-    const channelSnapshot = await getDocs(channelsCollection);
+    const channelSnapshot = await getDocs(query(channelsCollection));
     
     if (channelSnapshot.empty) {
       return useFallbackData();
@@ -107,103 +107,69 @@ export const getChannelsByCategory = async (category: string, excludeId?: string
   }).slice(0, 5); // Return a max of 5 related channels
 };
 
-const fetchRawMatchesForTournament = async (collectionName: string): Promise<any[]> => {
+export const getAgendaMatches = async (): Promise<Match[]> => {
   try {
-    const now = new Date();
-    const todayARTStr = now.toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' });
-    const startOfDay = new Date(`${todayARTStr}T00:00:00.000-03:00`);
-    const endOfDay = new Date(`${todayARTStr}T23:59:59.999-03:00`);
-
-    const q = query(
-      collection(db, collectionName),
-      where("matchTimestamp", ">=", startOfDay),
-      where("matchTimestamp", "<=", endOfDay),
-      orderBy("matchTimestamp")
-    );
-    const matchSnapshot = await getDocs(q);
-    return matchSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    console.error(`Error al obtener partidos de ${collectionName}:`, error);
-    return [];
-  }
-}
-
-export const getHeroMatches = async (): Promise<Match[]> => {
-  const tournamentConfigs = [
-    {
-      collectionName: 'mdc25',
-      tournamentName: 'Mundial de Clubes FIFA 2025™',
-      tournamentLogo: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s16000/Copa%20Mundial%20de%20Clubes.png',
-    },
-    {
-      collectionName: 'copaargentina',
-      tournamentName: 'Copa Argentina',
-      tournamentLogo: {
-        light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhMVspg_c6CLXysEZ8f-24rMQ8tfbZtn1WO8KDjZNpFXHmEWco46YoFncJZ1HEdT-nQ0azG-0sUUFiNVWe2eNPSSWI9Xk7aQXun4hrTfr-Ik-XE_SrTX0KzbYojh5kafAWACfwjlujielSrSU4E3bxq6RU8uwoBW4N5-3LCqYkbPa6xvENXZ2O3prv0DHA/s512/Copa%20Argentina%20AXION%20energy.png',
-        dark: 'https://blogger.googleusercontent.com/img/a/AVvXsEi9UORURfsnLGoEWprgs4a69QnccK54jCUVTi-9jJ8aZrWgAakBfIV6957zDUxQ8HDFJKvusZ9av0KuIdJa9y4vx9Ut-QTlsHd755hTVSFBxa_d1DkIwCDDxxZxzmhIRXNONSWKwVc9DzIh6fjrhGLRodCYLBaw99cZTX90tPzSIcmgEY3g7Ma2kUFO=s512',
-      },
-    },
-  ];
-
-  const rawMatchesPromises = tournamentConfigs.map(t => 
-    fetchRawMatchesForTournament(t.collectionName).then(matches => 
-      matches.map(m => ({ ...m, ...t }))
-    )
-  );
-
-  const allRawMatchesNested = await Promise.all(rawMatchesPromises);
-  const allRawMatches = allRawMatchesNested.flat();
-
-  if (allRawMatches.length === 0) {
-    return [];
-  }
-
-  const now = new Date();
-  // A match is considered expired 2 hours and 15 minutes after it starts.
-  const twoHoursFifteenMinutes = 2 * 60 * 60 * 1000 + 15 * 60 * 1000;
-  const matchExpiration = new Date(now.getTime() - twoHoursFifteenMinutes);
-  
-  const validMatches = allRawMatches.filter(matchData => {
-    const matchTimestamp = matchData.matchTimestamp?.toDate ? matchData.matchTimestamp.toDate() : new Date(matchData.matchTimestamp);
-    return matchTimestamp >= matchExpiration;
-  });
-
-  const allChannelIds = new Set(
-    validMatches.flatMap(match => (Array.isArray(match.channels) ? match.channels : []))
-  );
-
-  const channels = await getChannelsByIds(Array.from(allChannelIds));
-  const channelsMap = new Map(channels.map(c => [c.id, c]));
-
-  const processedMatches = validMatches.map((matchData): Match | null => {
-    const matchTimestamp = matchData.matchTimestamp.toDate();
+    const allChannels = await getChannels();
+    const allChannelsMap = new Map(allChannels.map(c => [c.id, { id: c.id, name: c.name, logoUrl: c.logoUrl }]));
     
-    const channelIds: string[] = Array.isArray(matchData.channels) ? matchData.channels : [];
-    const channelOptions: ChannelOption[] = channelIds
-      .map(id => {
-        const channel = channelsMap.get(id);
-        if (!channel) return null;
-        return { id: channel.id, name: channel.name, logoUrl: channel.logoUrl };
-      })
-      .filter((c): c is ChannelOption => c !== null);
+    const now = new Date();
+    // Use Argentina's time zone to determine what "today" is
+    const argentinaTimeNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+    const startOfToday = new Date(argentinaTimeNow.getFullYear(), argentinaTimeNow.getMonth(), argentinaTimeNow.getDate());
+    const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
 
-    return {
-      id: matchData.id,
-      team1: matchData.team1,
-      team1Logo: matchData.team1Logo,
-      team2: matchData.team2,
-      team2Logo: matchData.team2Logo,
-      time: matchTimestamp.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires', hour12: false }),
-      isLive: now >= matchTimestamp,
-      channels: channelOptions,
-      matchDetails: matchData.matchDetails,
-      matchTimestamp: matchTimestamp,
-      tournamentName: matchData.tournamentName,
-      tournamentLogo: matchData.tournamentLogo,
-    };
-  }).filter((match): match is Match => match !== null);
+    const matchCollections = ["mdc25", "copaargentina"];
+    let allMatches: Match[] = [];
 
-  processedMatches.sort((a, b) => a.matchTimestamp.getTime() - b.matchTimestamp.getTime());
-  
-  return processedMatches;
+    for (const coll of matchCollections) {
+        const q = query(
+            collection(db, coll),
+            where("matchTimestamp", ">=", Timestamp.fromDate(startOfToday)),
+            where("matchTimestamp", "<", Timestamp.fromDate(endOfToday))
+        );
+
+        const querySnapshot = await getDocs(q);
+
+        querySnapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const matchTimestamp = (data.matchTimestamp as Timestamp).toDate();
+            
+            // Hide match 2 hours and 15 minutes (135 minutes) after it started
+            if (now.getTime() - matchTimestamp.getTime() > (135 * 60 * 1000)) {
+                return;
+            }
+
+            const channelOptions: ChannelOption[] = (data.channels || []).map((id: string) => 
+                allChannelsMap.get(id)
+            ).filter((c: ChannelOption | undefined): c is ChannelOption => !!c);
+            
+            const isLive = now.getTime() >= matchTimestamp.getTime();
+            // A match becomes watchable 30 minutes before it starts and remains so until it's removed from the agenda.
+            const isWatchable = matchTimestamp.getTime() - now.getTime() <= (30 * 60 * 1000);
+
+            allMatches.push({
+                id: docSnap.id,
+                team1: data.team1,
+                team1Logo: data.team1Logo,
+                team2: data.team2,
+                team2Logo: data.team2Logo,
+                time: matchTimestamp.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires', hour12: false }),
+                isLive: isLive,
+                isWatchable: isWatchable,
+                channels: channelOptions,
+                matchDetails: data.matchDetails,
+                matchTimestamp: matchTimestamp,
+                tournamentName: coll === 'mdc25' ? 'Copa del Mundo 2025' : 'Copa Argentina',
+                tournamentLogo: coll === 'mdc25' ? { light: '/mdc25-light.png', dark: '/mdc25-dark.png' } : { light: '/afa-light.png', dark: '/afa-dark.png' },
+            });
+        });
+    }
+    
+    return allMatches.sort((a, b) => a.matchTimestamp.getTime() - b.matchTimestamp.getTime());
+
+  } catch (error) {
+    console.error("Error al obtener partidos de Firebase:", error);
+    // Return empty array on error as there is no placeholder match data
+    return [];
+  }
 };
