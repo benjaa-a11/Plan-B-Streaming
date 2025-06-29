@@ -12,27 +12,27 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 224 71.4% 4.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 224 71.4% 4.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 71.4% 4.1%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --background: 39 58% 95%; /* Lighter Cream White */
+    --foreground: 228 23% 11%; /* Lacquer Black */
+    --card: 39 58% 98%; /* Even Lighter Cream */
+    --card-foreground: 228 23% 11%;
+    --popover: 39 58% 98%;
+    --popover-foreground: 228 23% 11%;
+    --primary: 215 34% 40%; /* Blue Mountain */
+    --primary-foreground: 39 58% 90%; /* Cream White for contrast */
+    --secondary: 39 30% 91%;
+    --secondary-foreground: 228 23% 11%;
+    --muted: 39 30% 91%;
+    --muted-foreground: 228 23% 35%;
+    --accent: 39 30% 88%;
+    --accent-foreground: 228 23% 11%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 210 40% 90%;
-    --input: 210 40% 90%;
-    --ring: 217.2 91.2% 59.8%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 39 30% 85%;
+    --input: 39 30% 85%;
+    --ring: 215 34% 40%;
     --radius: 0.75rem;
-    --chart-1: 220 70% 50%;
+    --chart-1: 215 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
@@ -40,25 +40,25 @@
   }
 
   .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 210 40% 96.1%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --background: 228 23% 11%; /* Lacquer Black */
+    --foreground: 39 58% 86%; /* Cream White */
+    --card: 228 20% 16%;
+    --card-foreground: 39 58% 86%;
+    --popover: 228 23% 11%;
+    --popover-foreground: 39 58% 86%;
+    --primary: 215 34% 45%; /* Slightly lighter Blue Mountain for better pop */
+    --primary-foreground: 39 58% 95%;
+    --secondary: 228 20% 20%;
+    --secondary-foreground: 39 58% 86%;
+    --muted: 228 20% 20%;
+    --muted-foreground: 39 58% 65%;
+    --accent: 228 20% 25%;
+    --accent-foreground: 39 58% 86%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 217.2 91.2% 59.8%;
+    --border: 228 20% 25%;
+    --input: 228 20% 25%;
+    --ring: 215 34% 45%;
   }
 }
 
