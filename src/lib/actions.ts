@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import { db } from "./firebase";
 import { collection, getDocs, doc, getDoc, query, where, documentId, Timestamp } from "firebase/firestore";
 import type { Channel, Match, ChannelOption, Movie } from "@/types";
@@ -11,7 +12,8 @@ const useFallbackData = () => {
   return placeholderChannels;
 };
 
-export const getChannels = async (): Promise<Channel[]> => {
+// Cached version of getChannels
+export const getChannels = cache(async (): Promise<Channel[]> => {
   try {
     const channelsCollection = collection(db, "channels");
     const channelSnapshot = await getDocs(query(channelsCollection));
@@ -30,7 +32,7 @@ export const getChannels = async (): Promise<Channel[]> => {
     console.error("Error al obtener canales de Firebase:", error);
     return useFallbackData();
   }
-};
+});
 
 export const getChannelById = async (id: string): Promise<Channel | null> => {
   try {
@@ -86,7 +88,7 @@ export const getChannelsByIds = async (ids: string[]): Promise<Channel[]> => {
   } catch (error) {
     console.error("Error fetching channels by IDs from Firebase:", error);
     // Fallback to placeholder data for any matching IDs
-    const allPlaceholderChannels = placeholderChannels;
+    const allPlaceholderChannels = await getChannels();
     const placeholderMap = new Map(allPlaceholderChannels.map(c => [c.id, c]));
     return ids.map(id => placeholderMap.get(id)).filter((c): c is Channel => !!c);
   }
@@ -161,8 +163,8 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
               matchDetails: data.matchDetails,
               matchTimestamp: matchTimestamp,
               tournamentName: coll === 'mdc25' ? 'Copa del Mundo 2025' : 'Copa Argentina',
-                tournamentLogo: coll === 'mdc25' ? { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png', dark: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png' } : { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhMVspg_c6CLXysEZ8f-24rMQ8tfbZtn1WO8KDjZNpFXHmEWco46YoFncJZ1HEdT-nQ0azG-0sUUFiNVWe2eNPSSWI9Xk7aQXun4hrTfr-Ik-XE_SrTX0KzbYojh5kafAWACfwjlujielSrSU4E3bxq6RU8uwoBW4N5-3LCqYkbPa6xvENXZ2O3prv0DHA/s512/Copa%20Argentina%20AXION%20energy.png', dark: 'https://blogger.googleusercontent.com/img/a/AVvXsEi9UORURfsnLGoEWprgs4a69QnccK54jCUVTi-9jJ8aZrWgAakBfIV6957zDUxQ8HDFJKvusZ9av0KuIdJa9y4vx9Ut-QTlsHd755hTVSFBxa_d1DkIwCDDxxZxzmhIRXNONSWKwVc9DzIh6fjrhGLRodCYLBaw99cZTX90tPzSIcmgEY3g7Ma2kUFO=s512' },
-            });
+              tournamentLogo: coll === 'mdc25' ? { light: '/mdc25-light.png', dark: '/mdc25-dark.png' } : { light: '/afa-light.png', dark: '/afa-dark.png' },
+          });
       });
     }
     
@@ -184,7 +186,8 @@ const useMovieFallbackData = () => {
   return placeholderMovies;
 };
 
-export const getMovies = async (): Promise<Movie[]> => {
+// Cached version of getMovies
+export const getMovies = cache(async (): Promise<Movie[]> => {
   try {
     const moviesCollection = collection(db, "peliculas");
     const movieSnapshot = await getDocs(query(moviesCollection));
@@ -203,7 +206,7 @@ export const getMovies = async (): Promise<Movie[]> => {
     console.error("Error al obtener películas de Firebase:", error);
     return useMovieFallbackData();
   }
-};
+});
 
 export const getMovieById = async (id: string): Promise<Movie | null> => {
   try {

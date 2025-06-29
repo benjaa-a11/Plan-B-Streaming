@@ -23,8 +23,7 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, memo } from "react";
-import { useTheme } from "@/components/theme-provider";
+import { memo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type MatchesHeroProps = {
@@ -32,32 +31,7 @@ type MatchesHeroProps = {
 };
 
 const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
-    const { theme } = useTheme();
-    const [tournamentLogoUrl, setTournamentLogoUrl] = useState<string>('');
-    const [isClient, setIsClient] = useState(false);
-
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
-
-    useEffect(() => {
-        if (!isClient) return;
-
-        if (typeof match.tournamentLogo === 'string') {
-            setTournamentLogoUrl(match.tournamentLogo);
-            return;
-        }
-
-        let currentTheme = theme;
-        if (theme === 'system') {
-            currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        
-        if (match.tournamentLogo) {
-            setTournamentLogoUrl(currentTheme === 'dark' ? match.tournamentLogo.dark : match.tournamentLogo.light);
-        }
-    }, [theme, match.tournamentLogo, isClient]);
-
+    
     const renderButton = () => {
         if (!match.isWatchable) {
             return (
@@ -176,11 +150,30 @@ const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
                         <h3 className="font-semibold truncate w-full">{match.team1}</h3>
                     </div>
                     <div className="h-12 w-12 flex-shrink-0 flex items-center justify-center">
-                        {!isClient || !tournamentLogoUrl ? (
-                            <Skeleton className="h-12 w-12 rounded-md" />
-                        ) : (
-                             match.tournamentLogo && <Image
-                                src={tournamentLogoUrl}
+                       {typeof match.tournamentLogo === 'object' && match.tournamentLogo.light && match.tournamentLogo.dark ? (
+                           <>
+                                <Image
+                                    src={match.tournamentLogo.light}
+                                    alt={`${match.tournamentName} Logo`}
+                                    width={48}
+                                    height={48}
+                                    sizes="48px"
+                                    className="object-contain block dark:hidden"
+                                    data-ai-hint="tournament logo"
+                                />
+                                <Image
+                                    src={match.tournamentLogo.dark}
+                                    alt={`${match.tournamentName} Logo`}
+                                    width={48}
+                                    height={48}
+                                    sizes="48px"
+                                    className="object-contain hidden dark:block"
+                                    data-ai-hint="tournament logo"
+                                />
+                           </>
+                       ) : typeof match.tournamentLogo === 'string' ? (
+                            <Image
+                                src={match.tournamentLogo}
                                 alt={`${match.tournamentName} Logo`}
                                 width={48}
                                 height={48}
@@ -188,7 +181,9 @@ const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
                                 className="object-contain"
                                 data-ai-hint="tournament logo"
                             />
-                        )}
+                       ) : (
+                           <Skeleton className="h-12 w-12 rounded-md" />
+                       )}
                     </div>
                     <div className="flex flex-col items-center gap-2 text-center w-[100px]">
                         <Image src={match.team2Logo || ''} alt={match.team2} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />

@@ -5,6 +5,7 @@ import { ArrowLeft, VideoOff, Calendar, Clock } from "lucide-react";
 import type { Movie } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import VideoPlayer from "@/components/video-player";
 
 type MovieViewProps = {
   movie: Movie;
@@ -30,7 +31,9 @@ export default function MovieView({ movie }: MovieViewProps) {
          <div className="container mx-auto p-4 md:p-8">
             <main>
               <div className="aspect-video relative w-full overflow-hidden rounded-lg bg-black shadow-2xl shadow-primary/10">
-                 {movie.streamUrl ? (
+                {movie.format === 'mp4' && movie.streamUrl ? (
+                   <VideoPlayer src={movie.streamUrl} />
+                ) : movie.streamUrl ? (
                   <iframe
                     key={movie.id}
                     src={movie.streamUrl}

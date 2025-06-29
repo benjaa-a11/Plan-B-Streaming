@@ -38,4 +38,5 @@ export type Movie = {
   description: string;
   year: number;
   duration: string;
+  format?: 'mp4' | 'iframe';
 };
