@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Heart, SwitchCamera, VideoOff } from "lucide-react";
+import { ArrowLeft, Heart, SwitchCamera, VideoOff, Loader2 } from "lucide-react";
 import { useState, useMemo, memo } from "react";
+import dynamic from 'next/dynamic';
 
 import type { Channel } from "@/types";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -14,10 +15,10 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "./ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
-type ChannelViewProps = {
-  channel: Channel;
-  relatedChannels: Channel[];
-};
+const LivePlayer = dynamic(() => import('@/components/live-player'), {
+  loading: () => <div className="w-full h-full bg-black flex items-center justify-center"><Loader2 className="w-12 h-12 text-white animate-spin" /></div>,
+  ssr: false
+});
 
 /**
  * Converts various YouTube URL formats into a standard embeddable URL.
@@ -27,6 +28,9 @@ type ChannelViewProps = {
  */
 const getStreamableUrl = (url: string): string => {
     if (!url) return '';
+    
+    // Do not process m3u8 urls
+    if (url.includes('.m3u8')) return url;
     
     let videoId: string | null = null;
     try {
@@ -69,6 +73,7 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
     [channel.streamUrl]
   );
   const currentStreamUrl = streamLinks[currentStreamIndex];
+  const isHls = currentStreamUrl?.includes('.m3u8');
 
   const handleFavoriteClick = () => {
     if (isFav) {
@@ -140,7 +145,9 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
          <div className="container mx-auto p-4 md:p-8">
             <main>
               <div className="aspect-video relative w-full overflow-hidden rounded-lg bg-black shadow-2xl shadow-primary/10">
-                 {currentStreamUrl ? (
+                 {isHls ? (
+                  <LivePlayer src={currentStreamUrl} />
+                 ) : currentStreamUrl ? (
                   <iframe
                     key={currentStreamUrl}
                     src={currentStreamUrl}
