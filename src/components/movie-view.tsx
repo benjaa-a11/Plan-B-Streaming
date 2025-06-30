@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, VideoOff, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, VideoOff, Calendar, Clock, Star, User, Users } from "lucide-react";
 import type { Movie } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import VideoPlayer from "@/components/video-player";
+import { Badge } from "@/components/ui/badge";
 
 type MovieViewProps = {
   movie: Movie;
@@ -32,7 +33,7 @@ export default function MovieView({ movie }: MovieViewProps) {
             <main>
               <div className="aspect-video relative w-full overflow-hidden rounded-lg bg-black shadow-2xl shadow-primary/10">
                 {movie.format === 'mp4' && movie.streamUrl ? (
-                   <VideoPlayer src={movie.streamUrl} />
+                   <VideoPlayer src={movie.streamUrl} posterUrl={movie.posterUrl} />
                 ) : movie.streamUrl ? (
                   <iframe
                     key={movie.id}
@@ -53,22 +54,61 @@ export default function MovieView({ movie }: MovieViewProps) {
                 )}
               </div>
               <div className="mt-6 rounded-lg bg-card p-6">
-                <div className="flex-1">
-                  <p className="text-base text-primary font-semibold">{movie.category}</p>
-                  <h1 className="text-3xl font-bold tracking-tight mt-1">{movie.title}</h1>
-                  <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        <span>{movie.year}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        <span>{movie.duration}</span>
-                    </div>
+                 {movie.category?.length > 0 && (
+                   <div className="flex flex-wrap items-center gap-2">
+                      {movie.category.map((cat) => (
+                         <Badge key={cat} variant="secondary">{cat}</Badge>
+                      ))}
+                   </div>
+                 )}
+                <h1 className="text-3xl font-bold tracking-tight mt-2">{movie.title}</h1>
+                <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-muted-foreground">
+                  <div className="flex items-center gap-2" title="Año de lanzamiento">
+                      <Calendar className="w-4 h-4" />
+                      <span className="font-medium text-foreground">{movie.year}</span>
                   </div>
+                  {movie.duration && movie.duration !== "N/A" && (
+                    <div className="flex items-center gap-2" title="Duración">
+                        <Clock className="w-4 h-4" />
+                        <span className="font-medium text-foreground">{movie.duration}</span>
+                    </div>
+                  )}
+                  {movie.imdbRating && movie.imdbRating !== "N/A" && (
+                    <div className="flex items-center gap-2" title={`Rating IMDb: ${movie.imdbRating}`}>
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <span className="font-bold text-foreground">{movie.imdbRating}</span>
+                    </div>
+                  )}
                 </div>
+                
                 <Separator className="my-4"/>
-                <p className="text-muted-foreground">{movie.description}</p>
+                <p className="text-foreground/80 leading-relaxed">{movie.synopsis}</p>
+
+                {(movie.director && movie.director !== "N/A") || (movie.actors && movie.actors !== "N/A") ? (
+                  <>
+                    <Separator className="my-4"/>
+                    <div className="space-y-4 text-sm">
+                      {movie.director && movie.director !== "N/A" && (
+                        <div className="flex items-start gap-3">
+                          <User className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                          <div>
+                            <strong className="text-foreground">Dirección</strong>
+                            <p className="text-muted-foreground">{movie.director}</p>
+                          </div>
+                        </div>
+                      )}
+                      {movie.actors && movie.actors !== "N/A" && (
+                        <div className="flex items-start gap-3">
+                          <Users className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                          <div>
+                            <strong className="text-foreground">Reparto</strong>
+                            <p className="text-muted-foreground">{movie.actors}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : null}
               </div>
             </main>
          </div>

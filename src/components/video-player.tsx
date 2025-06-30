@@ -1,89 +1,96 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2, FastForward, Rewind, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Slider } from "@/components/ui/slider";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type VideoPlayerProps = {
   src: string;
+  posterUrl: string;
 };
 
-const formatTime = (timeInSeconds: number, showHours: boolean = false): string => {
+const formatTime = (timeInSeconds: number): string => {
   if (isNaN(timeInSeconds) || timeInSeconds < 0) {
-    return showHours ? "0:00:00" : "00:00";
+    return "00:00";
   }
-
-  const hours = Math.floor(timeInSeconds / 3600);
-  const minutes = Math.floor((timeInSeconds % 3600) / 60);
-  const seconds = Math.floor(timeInSeconds % 60);
-
-  if (showHours) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  const date = new Date(timeInSeconds * 1000);
+  const hh = date.getUTCHours();
+  const mm = date.getUTCMinutes().toString().padStart(2, "0");
+  const ss = date.getUTCSeconds().toString().padStart(2, "0");
+  if (hh) {
+    return `${hh}:${mm}:${ss}`;
   }
-
-  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  return `${mm}:${ss}`;
 };
 
-
-export default function VideoPlayer({ src }: VideoPlayerProps) {
+export default function VideoPlayer({ src, posterUrl }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastVolumeRef = useRef(1);
+
+  // State Management
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Animation State
+  const [showRewind, setShowRewind] = useState(false);
+  const [showForward, setShowForward] = useState(false);
+
+  const resetControlsTimeout = useCallback(() => {
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    setShowControls(true);
+    if (videoRef.current && !videoRef.current.paused) {
+      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+    }
+  }, []);
 
   const handlePlayPause = useCallback(async () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || error) return;
     try {
       if (videoRef.current.paused) {
         await videoRef.current.play();
       } else {
         videoRef.current.pause();
       }
-    } catch (error) {
-       if (error instanceof Error && error.name === 'NotAllowedError') {
-        console.warn("Autoplay was prevented.", error);
-      } else if (error instanceof Error && error.name === 'AbortError') {
-        // This is normal if the user interrupts play, e.g., by pausing quickly.
-      } else {
-        console.error("Video play failed:", error);
-      }
+    } catch (err) {
+      console.error("Video play/pause failed:", err);
       setIsPlaying(false);
     }
-  }, []);
+  }, [error]);
   
-  const handleMuteToggle = useCallback(() => {
+  const setVideoVolume = useCallback((newVolume: number) => {
     if (videoRef.current) {
-      const currentMuted = videoRef.current.muted;
-      videoRef.current.muted = !currentMuted;
-      if(currentMuted && videoRef.current.volume === 0) {
-        videoRef.current.volume = 0.5;
-      }
+        const clampedVolume = Math.max(0, Math.min(1, newVolume));
+        videoRef.current.volume = clampedVolume;
+        videoRef.current.muted = clampedVolume === 0;
     }
   }, []);
 
-  const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      setProgress(videoRef.current.currentTime);
+  const handleMuteToggle = useCallback(() => {
+    if (!videoRef.current) return;
+    if (videoRef.current.muted || videoRef.current.volume === 0) {
+      const newVolume = lastVolumeRef.current > 0 ? lastVolumeRef.current : 0.5;
+      setVideoVolume(newVolume);
+    } else {
+      setVideoVolume(0);
     }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration);
-      setIsLoading(false); // Video metadata is loaded, ready to show play button
-    }
-  };
+  }, [setVideoVolume]);
   
   const handleFullScreenToggle = useCallback(async () => {
     const player = playerRef.current;
     if (!player) return;
-
     try {
       if (!document.fullscreenElement) {
         await player.requestFullscreen();
@@ -91,111 +98,128 @@ export default function VideoPlayer({ src }: VideoPlayerProps) {
           await screen.orientation.lock("landscape").catch(() => {});
         }
       } else {
-        if (document.exitFullscreen) {
-            await document.exitFullscreen();
-        }
-        if (screen.orientation && typeof screen.orientation.unlock === "function") {
-            screen.orientation.unlock();
-        }
+        if (document.exitFullscreen) await document.exitFullscreen();
+        if (screen.orientation && typeof screen.orientation.unlock === "function") screen.orientation.unlock();
       }
     } catch (err) {
-        console.error(`Fullscreen Error: ${err instanceof Error ? err.message : String(err)}`);
+      console.error(`Fullscreen Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   }, []);
   
-  const hideControls = useCallback(() => {
-    if (videoRef.current && !videoRef.current.paused) {
-      setShowControls(false);
-    }
-  }, []);
-
-  const resetControlsTimeout = useCallback(() => {
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-    setShowControls(true);
-    controlsTimeoutRef.current = setTimeout(hideControls, 3000);
-  }, [hideControls]);
-
   const handleVideoClick = useCallback(() => {
     setShowControls(true);
     resetControlsTimeout();
   }, [resetControlsTimeout]);
 
+  const handleSeek = (value: number[]) => {
+    if (videoRef.current) {
+      const newTime = value[0];
+      videoRef.current.currentTime = newTime;
+      setProgress(newTime);
+    }
+  };
+
+  const seekBy = useCallback((amount: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = Math.max(0, Math.min(duration, videoRef.current.currentTime + amount));
+      if (amount > 0) {
+        setShowForward(true);
+        setTimeout(() => setShowForward(false), 700);
+      } else {
+        setShowRewind(true);
+        setTimeout(() => setShowRewind(false), 700);
+      }
+    }
+  }, [duration]);
+
+  // Main Effect for Player Setup and Listeners
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    const player = playerRef.current;
+    if (!video || !player) return;
 
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => {
-        setIsPlaying(false);
-        setShowControls(true);
-    };
+    // Event listeners
+    const onPlay = () => { setIsPlaying(true); resetControlsTimeout(); };
+    const onPause = () => { setIsPlaying(false); setShowControls(true); };
     const onVolumeChange = () => {
-        if (video) setIsMuted(video.muted);
-    };
-    const onWaiting = () => setIsLoading(true);
-    const onCanPlay = () => setIsLoading(false);
-    const onPlaying = () => {
-        setIsPlaying(true);
-        setIsLoading(false);
-        resetControlsTimeout();
-    };
-    const onEnded = () => {
-        setIsPlaying(false);
-        setShowControls(true);
-    };
-
-    const onFullScreenChange = () => setIsFullScreen(!!document.fullscreenElement);
-    const onKeyDown = (e: KeyboardEvent) => {
-        if ((e.target as HTMLElement).tagName === 'INPUT') return;
-        e.preventDefault();
-        switch(e.key.toLowerCase()) {
-            case " ":
-            case "k":
-                handlePlayPause();
-                break;
-            case "f":
-                handleFullScreenToggle();
-                break;
-            case "m":
-                handleMuteToggle();
-                break;
+        if (!video) return;
+        const currentVolume = video.volume;
+        const muted = video.muted;
+        setVolume(currentVolume);
+        setIsMuted(muted || currentVolume === 0);
+        if (!muted && currentVolume > 0) {
+            lastVolumeRef.current = currentVolume;
         }
     };
+    const onWaiting = () => !isSeeking && setIsLoading(true);
+    const onPlaying = () => setIsLoading(false);
+    const onEnded = () => { setIsPlaying(false); setShowControls(true); };
+    const onFullScreenChange = () => setIsFullScreen(!!document.fullscreenElement);
+    const onTimeUpdate = () => !isSeeking && setProgress(video.currentTime);
+    const onLoadedMetadata = () => { setDuration(video.duration); setIsLoading(false); };
+    const onError = () => {
+        if (!video.error) return;
+        switch (video.error.code) {
+          case video.error.MEDIA_ERR_ABORTED: setError("La reproducción de video fue abortada."); break;
+          case video.error.MEDIA_ERR_NETWORK: setError("Ocurrió un error de red al cargar el video."); break;
+          case video.error.MEDIA_ERR_DECODE: setError("Ocurrió un error al decodificar el video."); break;
+          case video.error.MEDIA_ERR_SRC_NOT_SUPPORTED: setError("El formato del video no es compatible o no se pudo encontrar."); break;
+          default: setError("Ocurrió un error inesperado al reproducir el video."); break;
+        }
+        setIsLoading(false);
+    };
 
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).tagName === 'INPUT' || e.ctrlKey || e.metaKey) return;
+      
+      switch(e.key.toLowerCase()) {
+        case " ": case "k": e.preventDefault(); handlePlayPause(); break;
+        case "f": e.preventDefault(); handleFullScreenToggle(); break;
+        case "m": e.preventDefault(); handleMuteToggle(); break;
+        case "arrowright": e.preventDefault(); seekBy(5); break;
+        case "arrowleft": e.preventDefault(); seekBy(-5); break;
+        case "arrowup": e.preventDefault(); setVideoVolume(volume + 0.1); break;
+        case "arrowdown": e.preventDefault(); setVideoVolume(volume - 0.1); break;
+      }
+    };
+
+    // Attach listeners
     video.addEventListener("play", onPlay);
     video.addEventListener("pause", onPause);
     video.addEventListener("ended", onEnded);
     video.addEventListener("volumechange", onVolumeChange);
     video.addEventListener("waiting", onWaiting);
-    video.addEventListener("canplay", onCanPlay);
     video.addEventListener("playing", onPlaying);
-    
-    const playerEl = playerRef.current;
+    video.addEventListener("timeupdate", onTimeUpdate);
+    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    video.addEventListener("error", onError);
     document.addEventListener("fullscreenchange", onFullScreenChange);
-    playerEl?.addEventListener("keydown", onKeyDown);
+    player.addEventListener("keydown", onKeyDown);
 
+    // Initial setup
     resetControlsTimeout();
+    video.play().catch(() => setIsPlaying(false)); 
 
+    // Cleanup
     return () => {
       video.removeEventListener("play", onPlay);
       video.removeEventListener("pause", onPause);
       video.removeEventListener("ended", onEnded);
       video.removeEventListener("volumechange", onVolumeChange);
       video.removeEventListener("waiting", onWaiting);
-      video.removeEventListener("canplay", onCanPlay);
       video.removeEventListener("playing", onPlaying);
+      video.removeEventListener("timeupdate", onTimeUpdate);
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("error", onError);
       document.removeEventListener("fullscreenchange", onFullScreenChange);
-      playerEl?.removeEventListener("keydown", onKeyDown);
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
+      player.removeEventListener("keydown", onKeyDown);
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     };
-  }, [resetControlsTimeout, handlePlayPause, handleFullScreenToggle, handleMuteToggle]);
+  }, [isSeeking, resetControlsTimeout, handlePlayPause, handleFullScreenToggle, handleMuteToggle, seekBy, setVideoVolume, volume]);
 
   const VolumeIcon = isMuted ? VolumeX : Volume2;
-  const showHours = duration >= 3600;
+  const timeWidth = duration >= 3600 ? "w-20" : "w-14";
+  const areControlsVisible = showControls || !isPlaying || error;
 
   return (
     <div 
@@ -203,33 +227,60 @@ export default function VideoPlayer({ src }: VideoPlayerProps) {
       tabIndex={0}
       className="relative w-full h-full bg-black flex items-center justify-center group/player overflow-hidden outline-none"
       onMouseMove={resetControlsTimeout}
-      onMouseLeave={hideControls}
+      onMouseLeave={() => isPlaying && setShowControls(false)}
       onClick={handleVideoClick}
     >
-      <video
-        ref={videoRef}
-        src={src}
-        className="max-h-full w-full object-contain"
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onDoubleClick={handleFullScreenToggle}
-        playsInline
-      />
-      
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10 pointer-events-none">
-          <Loader2 className="w-12 h-12 text-white animate-spin" />
+      {isLoading && posterUrl && !error && (
+        <div className="absolute inset-0 z-0">
+          <Image src={posterUrl} alt="Movie poster background" fill objectFit="cover" className="blur-lg scale-110 opacity-30" />
+          <div className="absolute inset-0 bg-black/50" />
         </div>
       )}
 
-      {!isPlaying && !isLoading && (
+      <video
+        ref={videoRef}
+        src={src}
+        className={cn("max-h-full w-full object-contain z-10", (isLoading || error) && "opacity-0")}
+        onDoubleClick={handleFullScreenToggle}
+        playsInline
+        muted={isMuted}
+      />
+      
+      {isFullScreen && (
+          <>
+            <div className="absolute left-0 top-0 h-full w-1/3 z-20" onDoubleClick={(e) => {e.stopPropagation(); seekBy(-10)}} />
+            <div className="absolute right-0 top-0 h-full w-1/3 z-20" onDoubleClick={(e) => {e.stopPropagation(); seekBy(10)}} />
+          </>
+      )}
+
+      {error && !isLoading && (
+         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-40 p-4 text-center pointer-events-none">
+            <AlertCircle className="w-16 h-16 text-destructive mb-4" />
+            <h3 className="text-xl font-semibold text-white">Error de reproducción</h3>
+            <p className="text-muted-foreground mt-2">{error}</p>
+        </div>
+      )}
+
+      {isLoading && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-transparent z-10 pointer-events-none">
+          <Loader2 className="w-12 h-12 text-white animate-spin" />
+        </div>
+      )}
+      
+      {(showRewind || showForward) && (
+        <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+            <div className="flex items-center gap-2 text-white bg-black/40 p-4 rounded-full animate-fade-in-out">
+                {showRewind && <Rewind className="w-8 h-8" />}
+                {showForward && <FastForward className="w-8 h-8" />}
+            </div>
+        </div>
+      )}
+
+      {!isPlaying && !isLoading && !error && (
         <div className="absolute inset-0 flex items-center justify-center z-20">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handlePlayPause();
-            }}
-            className="bg-black/40 text-white rounded-full p-2 sm:p-4 backdrop-blur-sm transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
+            onClick={(e) => { e.stopPropagation(); handlePlayPause(); }}
+            className="bg-black/40 text-white rounded-full p-2 sm:p-4 backdrop-blur-sm transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-black"
             aria-label="Play video"
           >
             <Play size={64} className="fill-white pl-1" />
@@ -239,28 +290,59 @@ export default function VideoPlayer({ src }: VideoPlayerProps) {
       
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/70 to-transparent p-2",
-          "transition-all duration-300 ease-in-out",
-          showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full pointer-events-none"
+          "absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/70 to-transparent p-2 transition-all duration-300 ease-in-out",
+          areControlsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full pointer-events-none"
         )}
       >
-        <div className="flex items-center gap-3 sm:gap-4 px-2 sm:px-4 pb-1 text-white">
-            <button onClick={handlePlayPause} className="hover:text-red-500 transition-colors p-1">
+        <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2 pb-1 text-white">
+            <button onClick={handlePlayPause} className="hover:text-primary transition-colors p-1" aria-label={isPlaying ? 'Pause' : 'Play'}>
               {isPlaying ? <Pause size={28} /> : <Play size={28} />}
             </button>
-            <div className="text-xs sm:text-sm font-mono select-none flex items-center gap-1.5">
-                <span>{formatTime(progress, showHours)}</span>
-                <span className="text-white/70">/</span>
-                <span>{formatTime(duration, showHours)}</span>
-            </div>
             
-            <div className="flex-1" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="hover:text-primary transition-colors p-1" aria-label={isMuted ? 'Unmute' : 'Mute'}>
+                  <VolumeIcon size={28} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto bg-black/50 border-none backdrop-blur-md p-2" side="top">
+                <Slider
+                  value={[volume * 100]}
+                  max={100}
+                  step={1}
+                  onValueChange={(value) => setVideoVolume(value[0] / 100)}
+                  className="w-20 h-2"
+                  aria-label="Volume slider"
+                />
+              </PopoverContent>
+            </Popover>
             
-            <button onClick={handleMuteToggle} className="hover:text-red-500 transition-colors p-1">
-                <VolumeIcon size={28} />
-            </button>
+            {isFullScreen ? (
+              <>
+                <span className={cn("text-xs sm:text-sm font-mono select-none text-center tabular-nums", timeWidth)}>
+                    {formatTime(progress)}
+                </span>
+                
+                <Slider
+                    value={[progress]}
+                    max={duration || 1}
+                    step={1}
+                    onValueChange={handleSeek}
+                    onValueChangeStart={() => setIsSeeking(true)}
+                    onValueChangeEnd={() => setIsSeeking(false)}
+                    className="w-full flex-1 cursor-pointer"
+                    aria-label="Video progress bar"
+                />
+
+                <span className={cn("text-xs sm:text-sm font-mono select-none text-center tabular-nums", timeWidth)}>
+                    {formatTime(duration)}
+                </span>
+              </>
+            ) : (
+                <div className="flex-1" />
+            )}
             
-            <button onClick={handleFullScreenToggle} className="hover:text-red-500 transition-colors p-1">
+            <button onClick={handleFullScreenToggle} className="hover:text-primary transition-colors p-1" aria-label={isFullScreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
               {isFullScreen ? <Minimize size={28} /> : <Maximize size={28} />}
             </button>
         </div>
@@ -268,4 +350,3 @@ export default function VideoPlayer({ src }: VideoPlayerProps) {
     </div>
   );
 }
- 

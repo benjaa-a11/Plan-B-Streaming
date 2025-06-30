@@ -30,6 +30,7 @@ export default function LivePlayer({ src }: LivePlayerProps) {
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
+    setShowControls(true);
     if (isPlaying) {
       controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
     }
@@ -72,7 +73,7 @@ export default function LivePlayer({ src }: LivePlayerProps) {
   }, []);
 
   const handlePlayerClick = useCallback(() => {
-    setShowControls(true);
+    setShowControls(v => !v);
     resetControlsTimeout();
   }, [resetControlsTimeout]);
 
@@ -89,7 +90,18 @@ export default function LivePlayer({ src }: LivePlayerProps) {
     // Reset state for new source
     setIsLoading(true);
     setError(null);
-    setIsPlaying(false);
+    
+    // Attempt to play with sound initially
+    const attemptPlay = async () => {
+      try {
+        await video.play();
+        setIsPlaying(true);
+      } catch (err) {
+        setIsPlaying(false);
+        // Autoplay was likely blocked, user will need to click to start.
+        console.warn("Autoplay failed:", err);
+      }
+    };
 
     const setupPlayer = async () => {
       try {
@@ -101,34 +113,39 @@ export default function LivePlayer({ src }: LivePlayerProps) {
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
           // Use native HLS support
           video.src = src;
+          attemptPlay();
         } else {
           // Use hls.js as a fallback
           const Hls = (await import("hls.js")).default;
           if (Hls.isSupported()) {
             const hls = new Hls({
-              // Robust configuration
               fragLoadErrorMaxRetry: 6,
               manifestLoadErrorMaxRetry: 4,
-              recoverMediaError: true,
             });
 
             hlsInstanceRef.current = hls;
             hls.loadSource(src);
             hls.attachMedia(video);
+            
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              attemptPlay();
+            });
 
             hls.on(Hls.Events.ERROR, (event, data) => {
               if (data.fatal) {
                 console.warn("HLS Fatal Error:", data);
                 switch (data.type) {
                   case Hls.ErrorTypes.NETWORK_ERROR:
+                    setError("Error de red. Verifique su conexión.");
                     hls.startLoad();
                     break;
                   case Hls.ErrorTypes.MEDIA_ERROR:
+                     setError("No se pudo cargar la transmisión.");
                     hls.recoverMediaError();
                     break;
                   default:
                     // Cannot recover, show error to user
-                    setError("No se pudo cargar la transmisión. Es posible que no esté disponible o sea incompatible.");
+                    setError("Transmisión no disponible o incompatible.");
                     setIsLoading(false);
                     break;
                 }
@@ -161,12 +178,12 @@ export default function LivePlayer({ src }: LivePlayerProps) {
     const video = videoRef.current;
     if (!video) return;
 
-    const onPlay = () => { setIsPlaying(true); setIsLoading(false); setError(null); };
+    const onPlay = () => { setIsPlaying(true); setIsLoading(false); setError(null); resetControlsTimeout(); };
     const onPause = () => { setIsPlaying(false); setShowControls(true); };
     const onVolumeChange = () => setIsMuted(video.muted || video.volume === 0);
     const onWaiting = () => setIsLoading(true);
     const onCanPlay = () => setIsLoading(false);
-    const onPlaying = () => { setIsLoading(false); setIsPlaying(true); resetControlsTimeout(); };
+    const onPlaying = () => { setIsLoading(false); resetControlsTimeout(); };
     const onFullscreenChange = () => setIsFullScreen(!!document.fullscreenElement);
     const onError = () => {
         if (video.error && !error) { // Only if not already handled by HLS
@@ -196,22 +213,50 @@ export default function LivePlayer({ src }: LivePlayerProps) {
     };
   }, [error, resetControlsTimeout]);
   
+  // Keyboard shortcuts for a consistent experience
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).tagName === 'INPUT' || e.altKey || e.ctrlKey || e.metaKey) return;
+      
+      switch(e.key.toLowerCase()) {
+        case " ": case "k": 
+          e.preventDefault(); 
+          handlePlayPause(); 
+          break;
+        case "f": 
+          e.preventDefault(); 
+          handleFullScreenToggle(); 
+          break;
+        case "m": 
+          e.preventDefault(); 
+          handleMuteToggle(); 
+          break;
+      }
+    };
+    
+    player.addEventListener("keydown", onKeyDown);
+    return () => {
+      player.removeEventListener("keydown", onKeyDown);
+    }
+  }, [handlePlayPause, handleFullScreenToggle, handleMuteToggle]);
+
   const VolumeIcon = isMuted ? VolumeX : Volume2;
   const showCenterPlayButton = !isPlaying && !isLoading && !error;
-  
-  // Controls are visible if not playing, if explicitly shown, or if there's an error
   const areControlsVisible = showControls || !isPlaying || !!error;
 
   return (
     <div
       ref={playerRef}
+      tabIndex={0}
       className="relative w-full h-full bg-black flex items-center justify-center group/player overflow-hidden outline-none"
-      onClick={handlePlayerClick}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => isPlaying && setShowControls(false)}
       onDoubleClick={handleFullScreenToggle}
     >
-      <video ref={videoRef} className="max-h-full w-full object-contain" playsInline autoPlay muted={isMuted} />
+      <video ref={videoRef} className="max-h-full w-full object-contain" playsInline muted={isMuted} onClick={handlePlayerClick} />
       
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10 pointer-events-none">

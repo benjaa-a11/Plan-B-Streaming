@@ -19,10 +19,10 @@ export default function MovieBrowser({
     return movies.filter((movie) => {
       if (!movie) return false;
       const matchesCategory =
-        selectedCategory === "Todas" || movie.category === selectedCategory;
+        selectedCategory === "Todas" || movie.category?.includes(selectedCategory);
       const matchesSearch =
         (movie.title?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
-        (movie.description?.toLowerCase() ?? "").includes(searchTerm.toLowerCase());
+        (movie.synopsis?.toLowerCase() ?? "").includes(searchTerm.toLowerCase());
       return matchesCategory && matchesSearch;
     });
   }, [movies, searchTerm, selectedCategory]);
