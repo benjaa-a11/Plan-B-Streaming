@@ -162,9 +162,9 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
               channels: channelOptions,
               matchDetails: data.matchDetails,
               matchTimestamp: matchTimestamp,
-                              tournamentName: coll === 'mdc25' ? 'Copa del Mundo 2025' : 'Copa Argentina',
-                tournamentLogo: coll === 'mdc25' ? { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png', dark: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png' } : { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhMVspg_c6CLXysEZ8f-24rMQ8tfbZtn1WO8KDjZNpFXHmEWco46YoFncJZ1HEdT-nQ0azG-0sUUFiNVWe2eNPSSWI9Xk7aQXun4hrTfr-Ik-XE_SrTX0KzbYojh5kafAWACfwjlujielSrSU4E3bxq6RU8uwoBW4N5-3LCqYkbPa6xvENXZ2O3prv0DHA/s512/Copa%20Argentina%20AXION%20energy.png', dark: 'https://blogger.googleusercontent.com/img/a/AVvXsEi9UORURfsnLGoEWprgs4a69QnccK54jCUVTi-9jJ8aZrWgAakBfIV6957zDUxQ8HDFJKvusZ9av0KuIdJa9y4vx9Ut-QTlsHd755hTVSFBxa_d1DkIwCDDxxZxzmhIRXNONSWKwVc9DzIh6fjrhGLRodCYLBaw99cZTX90tPzSIcmgEY3g7Ma2kUFO=s512' },
-            });
+              tournamentName: coll === 'mdc25' ? 'Copa del Mundo 2025' : 'Copa Argentina',
+              tournamentLogo: coll === 'mdc25' ? { light: '/mdc25-light.png', dark: '/mdc25-dark.png' } : { light: '/afa-light.png', dark: '/afa-dark.png' },
+          });
       });
     }
     
@@ -181,6 +181,73 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
 
 // --- MOVIES ---
 
+const OMDb_API_KEY = "13b60bb5";
+
+const _fetchOMDbData = cache(async (imdbID: string) => {
+  if (!imdbID) return null;
+  try {
+    const response = await fetch(`https://www.omdbapi.com/?i=${imdbID}&apikey=${OMDb_API_KEY}`);
+    if (!response.ok) {
+      console.error(`Error fetching OMDb data for ${imdbID}: ${response.statusText}`);
+      return null;
+    }
+    const data = await response.json();
+    if (data.Response === "False") {
+      console.error(`OMDb API error for ${imdbID}: ${data.Error}`);
+      return null;
+    }
+    return data;
+  } catch (error) {
+    console.error(`Error fetching from OMDb for ${imdbID}:`, error);
+    return null;
+  }
+});
+
+const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Movie> => {
+  if (firestoreMovie.imdbID) {
+    const omdbData = await _fetchOMDbData(firestoreMovie.imdbID);
+    if (omdbData) {
+      let finalDuration = firestoreMovie.duration;
+      if (!finalDuration && omdbData.Runtime && omdbData.Runtime !== "N/A") {
+        const runtimeMinutes = parseInt(omdbData.Runtime, 10);
+        if (!isNaN(runtimeMinutes)) {
+          const hours = Math.floor(runtimeMinutes / 60);
+          const minutes = runtimeMinutes % 60;
+          if (hours > 0) {
+            finalDuration = `${hours}h ${minutes}m`;
+          } else {
+            finalDuration = `${minutes}m`;
+          }
+        } else {
+          finalDuration = omdbData.Runtime;
+        }
+      }
+
+      return {
+        id: docId,
+        imdbID: firestoreMovie.imdbID,
+        title: firestoreMovie.title || omdbData.Title,
+        posterUrl: firestoreMovie.posterUrl || omdbData.Poster,
+        streamUrl: firestoreMovie.streamUrl,
+        category: firestoreMovie.category || omdbData.Genre?.split(', ') || [],
+        synopsis: firestoreMovie.synopsis || omdbData.Plot,
+        year: firestoreMovie.year || parseInt(omdbData.Year, 10),
+        duration: finalDuration,
+        format: firestoreMovie.format,
+        director: firestoreMovie.director || omdbData.Director,
+        actors: firestoreMovie.actors || omdbData.Actors,
+        imdbRating: firestoreMovie.imdbRating || omdbData.imdbRating,
+      };
+    }
+  }
+  // Fallback to Firestore data if no imdbID or OMDb fetch fails
+  return {
+    id: docId,
+    ...firestoreMovie,
+  } as Movie;
+};
+
+
 const useMovieFallbackData = () => {
   console.warn("Firebase no disponible o colección de películas vacía. Usando datos de demostración.");
   return placeholderMovies;
@@ -196,11 +263,9 @@ export const getMovies = cache(async (): Promise<Movie[]> => {
       return useMovieFallbackData();
     }
     
-    const movies = movieSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as Movie));
-    
+    const moviePromises = movieSnapshot.docs.map(doc => _enrichMovieData(doc.id, doc.data()));
+    const movies = await Promise.all(moviePromises);
+
     return movies;
   } catch (error) {
     console.error("Error al obtener películas de Firebase:", error);
@@ -214,7 +279,7 @@ export const getMovieById = async (id: string): Promise<Movie | null> => {
     const movieSnapshot = await getDoc(movieDoc);
 
     if (movieSnapshot.exists()) {
-      return { id: movieSnapshot.id, ...movieSnapshot.data() } as Movie;
+      return await _enrichMovieData(movieSnapshot.id, movieSnapshot.data());
     } else {
       const fallbackMovie = placeholderMovies.find(m => m.id === id);
       if (fallbackMovie) {
@@ -236,6 +301,6 @@ export const getMovieById = async (id: string): Promise<Movie | null> => {
 export const getMovieCategories = async (): Promise<string[]> => {
   const movies = await getMovies();
   if (!movies || movies.length === 0) return [];
-  const categories = new Set(movies.map(movie => movie.category));
+  const categories = new Set(movies.flatMap(movie => movie.category || []));
   return Array.from(categories).sort();
 };
