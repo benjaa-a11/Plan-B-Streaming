@@ -31,12 +31,16 @@ export type Match = {
 
 export type Movie = {
   id: string;
+  imdbID?: string;
   title: string;
   posterUrl: string;
   streamUrl: string;
-  category: string;
-  description: string;
+  category: string[];
+  synopsis: string;
   year: number;
   duration: string;
   format?: 'mp4' | 'iframe';
+  director?: string;
+  actors?: string;
+  imdbRating?: string;
 };
