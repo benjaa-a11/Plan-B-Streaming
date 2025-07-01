@@ -16,7 +16,7 @@ export const placeholderCopaArgentinaMatches: any[] = [];
 export const placeholderMovies: Movie[] = [
   {
     id: "peli-1",
-    imdbID: "tt0816692",
+    tmdbID: "157336",
     title: "Interestelar",
     posterUrl: "https://m.media-amazon.com/images/M/MV5BZjdkOTU3MDktN2IxOS00OGEyLWFmMjktY2FiMmZkNWIyODZiXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_FMjpg_UX1000_.jpg",
     streamUrl: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
@@ -27,11 +27,11 @@ export const placeholderMovies: Movie[] = [
     format: "mp4",
     director: "Christopher Nolan",
     actors: "Matthew McConaughey, Anne Hathaway, Jessica Chastain",
-    imdbRating: "8.7",
+    rating: "8.7",
   },
   {
     id: "peli-2",
-    imdbID: "tt1375666",
+    tmdbID: "27205",
     title: "El Origen",
     posterUrl: "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_FMjpg_UX1000_.jpg",
     streamUrl: "https://www.youtube.com/embed/YoHD9XEInc0", // Trailer
@@ -42,11 +42,11 @@ export const placeholderMovies: Movie[] = [
     format: "iframe",
     director: "Christopher Nolan",
     actors: "Leonardo DiCaprio, Joseph Gordon-Levitt, Elliot Page",
-    imdbRating: "8.8",
+    rating: "8.8",
   },
   {
     id: "peli-3",
-    imdbID: "tt0468569",
+    tmdbID: "155",
     title: "El Caballero de la Noche",
     posterUrl: "https://m.media-amazon.com/images/M/MV5BMTMxNTMwODM0NF5BMl5BanBnXkFtZTcwODAyMTk2Mw@@._V1_FMjpg_UX1000_.jpg",
     streamUrl: "https://www.youtube.com/embed/EXeTwQWrcwY", // Trailer
@@ -57,7 +57,7 @@ export const placeholderMovies: Movie[] = [
     format: "iframe",
     director: "Christopher Nolan",
     actors: "Christian Bale, Heath Ledger, Aaron Eckhart",
-    imdbRating: "9.0",
+    rating: "9.0",
   },
 ];
 
