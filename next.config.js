@@ -47,7 +47,7 @@ const nextConfig = {
       },
      {
         protocol: 'https',
-        hostname:'www.themoviedb.org',
+        hostname: 'image.tmdb.org',
         port: '',
         pathname: '/**',
       },
