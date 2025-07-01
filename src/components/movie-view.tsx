@@ -63,20 +63,22 @@ export default function MovieView({ movie }: MovieViewProps) {
                  )}
                 <h1 className="text-3xl font-bold tracking-tight mt-2">{movie.title}</h1>
                 <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-muted-foreground">
-                  <div className="flex items-center gap-2" title="Año de lanzamiento">
-                      <Calendar className="w-4 h-4" />
-                      <span className="font-medium text-foreground">{movie.year}</span>
-                  </div>
+                  {movie.year && (
+                    <div className="flex items-center gap-2" title="Año de lanzamiento">
+                        <Calendar className="w-4 h-4" />
+                        <span className="font-medium text-foreground">{movie.year}</span>
+                    </div>
+                  )}
                   {movie.duration && movie.duration !== "N/A" && (
                     <div className="flex items-center gap-2" title="Duración">
                         <Clock className="w-4 h-4" />
                         <span className="font-medium text-foreground">{movie.duration}</span>
                     </div>
                   )}
-                  {movie.imdbRating && movie.imdbRating !== "N/A" && (
-                    <div className="flex items-center gap-2" title={`Rating IMDb: ${movie.imdbRating}`}>
+                  {movie.rating && movie.rating !== "N/A" && (
+                    <div className="flex items-center gap-2" title={`Puntuación: ${movie.rating}`}>
                       <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                      <span className="font-bold text-foreground">{movie.imdbRating}</span>
+                      <span className="font-bold text-foreground">{movie.rating}</span>
                     </div>
                   )}
                 </div>
