@@ -115,19 +115,36 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
     const allChannelsMap = new Map(allChannels.map(c => [c.id, { id: c.id, name: c.name, logoUrl: c.logoUrl }]));
     
     const now = new Date();
-    // Use Argentina's time zone to determine what "today" is
-    const argentinaTimeNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
-    const startOfToday = new Date(argentinaTimeNow.getFullYear(), argentinaTimeNow.getMonth(), argentinaTimeNow.getDate());
-    const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+    const timeZone = 'America/Argentina/Buenos_Aires';
+
+    // Get the current date parts in Argentina's timezone to avoid server timezone issues.
+    // This is a robust way to determine what "today" is in Argentina, regardless of server location.
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+    }).formatToParts(now);
+
+    const year = parseInt(parts.find(p => p.type === 'year')!.value, 10);
+    const month = parseInt(parts.find(p => p.type === 'month')!.value, 10);
+    const day = parseInt(parts.find(p => p.type === 'day')!.value, 10);
+
+    // Create Date objects representing the start and end of "today" in Argentina, converted to UTC.
+    // 00:00 in ART (UTC-3) is 03:00 in UTC.
+    const startOfTodayUTC = new Date(Date.UTC(year, month - 1, day, 3, 0, 0));
+    // 00:00 on the next day in ART is 03:00 UTC on the next day.
+    const endOfTodayUTC = new Date(Date.UTC(year, month - 1, day + 1, 3, 0, 0));
 
     const matchCollections = ["mdc25", "copaargentina"];
     let allMatches: Match[] = [];
 
     for (const coll of matchCollections) {
+      // Query Firestore using the calculated and reliable UTC timestamps
       const q = query(
           collection(db, coll),
-          where("matchTimestamp", ">=", Timestamp.fromDate(startOfToday)),
-          where("matchTimestamp", "<", Timestamp.fromDate(endOfToday))
+          where("matchTimestamp", ">=", Timestamp.fromDate(startOfTodayUTC)),
+          where("matchTimestamp", "<", Timestamp.fromDate(endOfTodayUTC))
       );
 
       const querySnapshot = await getDocs(q);
@@ -139,7 +156,7 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
           const timeSinceStart = now.getTime() - matchTimestamp.getTime();
           // Hide match 2 hours and 15 minutes after it started (135 minutes)
           if (timeSinceStart > (135 * 60 * 1000)) {
-              return;
+              return; // Skip this match as it has finished
           }
 
           const channelOptions: ChannelOption[] = (data.channels || []).map((id: string) => 
@@ -163,7 +180,7 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
               matchDetails: data.matchDetails,
               matchTimestamp: matchTimestamp,
               tournamentName: coll === 'mdc25' ? 'Copa del Mundo 2025' : 'Copa Argentina',
-                tournamentLogo: coll === 'mdc25' ? { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png', dark: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png' } : { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiXTUXpnx0sumZFC40lNhXX4jbcfTfnPwyLhsOpiVpKJf9xR5vtF41owj9G49KudVYWDrgKS1Q6d3hOEQbp7GW0hBiZIBc0Ei-GA21b9LyDs4pE4t0JCDL9xkhLPWG5-mug36z6iW8I1P2XTVH3xYClfrxOcLRq25Agno069Q1L0nwe_mW0rXgJ6lxf3F4/s512/Primera%20Nacional.png', dark: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiXTUXpnx0sumZFC40lNhXX4jbcfTfnPwyLhsOpiVpKJf9xR5vtF41owj9G49KudVYWDrgKS1Q6d3hOEQbp7GW0hBiZIBc0Ei-GA21b9LyDs4pE4t0JCDL9xkhLPWG5-mug36z6iW8I1P2XTVH3xYClfrxOcLRq25Agno069Q1L0nwe_mW0rXgJ6lxf3F4/s512/Primera%20Nacional.png' },
+                tournamentLogo: coll === 'mdc25' ? { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png', dark: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png' } : { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhMVspg_c6CLXysEZ8f-24rMQ8tfbZtn1WO8KDjZNpFXHmEWco46YoFncJZ1HEdT-nQ0azG-0sUUFiNVWe2eNPSSWI9Xk7aQXun4hrTfr-Ik-XE_SrTX0KzbYojh5kafAWACfwjlujielSrSU4E3bxq6RU8uwoBW4N5-3LCqYkbPa6xvENXZ2O3prv0DHA/s512/Copa%20Argentina%20AXION%20energy.png', dark: 'https://blogger.googleusercontent.com/img/a/AVvXsEi9UORURfsnLGoEWprgs4a69QnccK54jCUVTi-9jJ8aZrWgAakBfIV6957zDUxQ8HDFJKvusZ9av0KuIdJa9y4vx9Ut-QTlsHd755hTVSFBxa_d1DkIwCDDxxZxzmhIRXNONSWKwVc9DzIh6fjrhGLRodCYLBaw99cZTX90tPzSIcmgEY3g7Ma2kUFO=s512' },
             });
       });
     }
@@ -181,66 +198,87 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
 
 // --- MOVIES ---
 
-const OMDb_API_KEY = "13b60bb5";
+const TMDB_API_KEY = "6e169a1817f02679d8c5eaf5f241c093";
+const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
 
-const _fetchOMDbData = cache(async (imdbID: string) => {
-  if (!imdbID) return null;
+const _fetchTMDbData = cache(async (tmdbID: string) => {
+  if (!tmdbID) return null;
   try {
-    const response = await fetch(`https://www.omdbapi.com/?i=${imdbID}&apikey=${OMDb_API_KEY}`);
+    const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}?api_key=${TMDB_API_KEY}&language=es-ES`);
     if (!response.ok) {
-      console.error(`Error fetching OMDb data for ${imdbID}: ${response.statusText}`);
+      console.error(`Error fetching TMDb data for ${tmdbID}: ${response.statusText}`);
       return null;
     }
     const data = await response.json();
-    if (data.Response === "False") {
-      console.error(`OMDb API error for ${imdbID}: ${data.Error}`);
+    if (data.success === false) {
+      console.error(`TMDb API error for ${tmdbID}: ${data.status_message}`);
       return null;
     }
     return data;
   } catch (error) {
-    console.error(`Error fetching from OMDb for ${imdbID}:`, error);
+    console.error(`Error fetching from TMDb for ${tmdbID}:`, error);
+    return null;
+  }
+});
+
+const _fetchTMDbCredits = cache(async (tmdbID: string) => {
+  if (!tmdbID) return null;
+  try {
+    const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}/credits?api_key=${TMDB_API_KEY}&language=es-ES`);
+    if (!response.ok) {
+      console.error(`Error fetching TMDb credits for ${tmdbID}: ${response.statusText}`);
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching credits from TMDb for ${tmdbID}:`, error);
     return null;
   }
 });
 
 const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Movie> => {
-  if (firestoreMovie.imdbID) {
-    const omdbData = await _fetchOMDbData(firestoreMovie.imdbID);
-    if (omdbData) {
+  if (firestoreMovie.tmdbID) {
+    const [movieData, creditsData] = await Promise.all([
+      _fetchTMDbData(firestoreMovie.tmdbID),
+      _fetchTMDbCredits(firestoreMovie.tmdbID),
+    ]);
+
+    if (movieData) {
+      // Format duration
       let finalDuration = firestoreMovie.duration;
-      if (!finalDuration && omdbData.Runtime && omdbData.Runtime !== "N/A") {
-        const runtimeMinutes = parseInt(omdbData.Runtime, 10);
-        if (!isNaN(runtimeMinutes)) {
-          const hours = Math.floor(runtimeMinutes / 60);
-          const minutes = runtimeMinutes % 60;
-          if (hours > 0) {
-            finalDuration = `${hours}h ${minutes}m`;
-          } else {
-            finalDuration = `${minutes}m`;
-          }
+      if (!finalDuration && movieData.runtime) {
+        const hours = Math.floor(movieData.runtime / 60);
+        const minutes = movieData.runtime % 60;
+        if (hours > 0) {
+          finalDuration = `${hours}h ${minutes}m`;
         } else {
-          finalDuration = omdbData.Runtime;
+          finalDuration = `${minutes}m`;
         }
       }
 
+      // Get director and actors from credits
+      const director = creditsData?.crew?.find((person: any) => person.job === 'Director')?.name;
+      const actors = creditsData?.cast?.slice(0, 3).map((person: any) => person.name).join(', ');
+
       return {
         id: docId,
-        imdbID: firestoreMovie.imdbID,
-        title: firestoreMovie.title || omdbData.Title,
-        posterUrl: firestoreMovie.posterUrl || omdbData.Poster,
+        tmdbID: firestoreMovie.tmdbID,
+        title: firestoreMovie.title || movieData.title,
+        posterUrl: firestoreMovie.posterUrl || (movieData.poster_path ? `${TMDB_IMAGE_BASE_URL}${movieData.poster_path}` : 'https://placehold.co/500x750.png'),
         streamUrl: firestoreMovie.streamUrl,
-        category: firestoreMovie.category || omdbData.Genre?.split(', ') || [],
-        synopsis: firestoreMovie.synopsis || omdbData.Plot,
-        year: firestoreMovie.year || parseInt(omdbData.Year, 10),
+        category: firestoreMovie.category || movieData.genres?.map((g: any) => g.name) || [],
+        synopsis: firestoreMovie.synopsis || movieData.overview,
+        year: firestoreMovie.year || (movieData.release_date ? parseInt(movieData.release_date.split('-')[0], 10) : undefined),
         duration: finalDuration,
         format: firestoreMovie.format,
-        director: firestoreMovie.director || omdbData.Director,
-        actors: firestoreMovie.actors || omdbData.Actors,
-        imdbRating: firestoreMovie.imdbRating || omdbData.imdbRating,
+        director: firestoreMovie.director || director,
+        actors: firestoreMovie.actors || actors,
+        rating: firestoreMovie.rating || (movieData.vote_average ? movieData.vote_average.toFixed(1) : undefined),
       };
     }
   }
-  // Fallback to Firestore data if no imdbID or OMDb fetch fails
+  // Fallback to Firestore data if no tmdbID or API fetch fails
   return {
     id: docId,
     ...firestoreMovie,
