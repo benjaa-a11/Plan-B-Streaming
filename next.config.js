@@ -45,6 +45,12 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+     {
+        protocol: 'https',
+        hostname:  'https://media.themoviedb.org',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };
