@@ -180,8 +180,8 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
               matchDetails: data.matchDetails,
               matchTimestamp: matchTimestamp,
               tournamentName: coll === 'mdc25' ? 'Copa del Mundo 2025' : 'Copa Argentina',
-                tournamentLogo: coll === 'mdc25' ? { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png', dark: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png' } : { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhMVspg_c6CLXysEZ8f-24rMQ8tfbZtn1WO8KDjZNpFXHmEWco46YoFncJZ1HEdT-nQ0azG-0sUUFiNVWe2eNPSSWI9Xk7aQXun4hrTfr-Ik-XE_SrTX0KzbYojh5kafAWACfwjlujielSrSU4E3bxq6RU8uwoBW4N5-3LCqYkbPa6xvENXZ2O3prv0DHA/s512/Copa%20Argentina%20AXION%20energy.png', dark: 'https://blogger.googleusercontent.com/img/a/AVvXsEi9UORURfsnLGoEWprgs4a69QnccK54jCUVTi-9jJ8aZrWgAakBfIV6957zDUxQ8HDFJKvusZ9av0KuIdJa9y4vx9Ut-QTlsHd755hTVSFBxa_d1DkIwCDDxxZxzmhIRXNONSWKwVc9DzIh6fjrhGLRodCYLBaw99cZTX90tPzSIcmgEY3g7Ma2kUFO=s512' },
-            });
+              tournamentLogo: coll === 'mdc25' ? { light: '/mdc25-light.png', dark: '/mdc25-dark.png' } : { light: '/afa-light.png', dark: '/afa-dark.png' },
+          });
       });
     }
     
@@ -198,12 +198,13 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
 
 // --- MOVIES ---
 
-const TMDB_API_KEY = "6e169a1817f02679d8c5eaf5f241c093";
+const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
+const TMDB_BACKDROP_BASE_URL = "https://image.tmdb.org/t/p/w1280";
 
 const _fetchTMDbData = cache(async (tmdbID: string) => {
-  if (!tmdbID) return null;
+  if (!tmdbID || !TMDB_API_KEY) return null;
   try {
     const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}?api_key=${TMDB_API_KEY}&language=es-ES`);
     if (!response.ok) {
@@ -223,7 +224,7 @@ const _fetchTMDbData = cache(async (tmdbID: string) => {
 });
 
 const _fetchTMDbCredits = cache(async (tmdbID: string) => {
-  if (!tmdbID) return null;
+  if (!tmdbID || !TMDB_API_KEY) return null;
   try {
     const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}/credits?api_key=${TMDB_API_KEY}&language=es-ES`);
     if (!response.ok) {
@@ -266,6 +267,7 @@ const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Mov
         tmdbID: firestoreMovie.tmdbID,
         title: firestoreMovie.title || movieData.title,
         posterUrl: firestoreMovie.posterUrl || (movieData.poster_path ? `${TMDB_IMAGE_BASE_URL}${movieData.poster_path}` : 'https://placehold.co/500x750.png'),
+        backdropUrl: movieData.backdrop_path ? `${TMDB_BACKDROP_BASE_URL}${movieData.backdrop_path}` : undefined,
         streamUrl: firestoreMovie.streamUrl,
         category: firestoreMovie.category || movieData.genres?.map((g: any) => g.name) || [],
         synopsis: firestoreMovie.synopsis || movieData.overview,
