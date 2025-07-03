@@ -255,6 +255,7 @@ export default function LivePlayer({ src }: LivePlayerProps) {
       onMouseMove={handleMouseMove}
       onMouseLeave={() => isPlaying && setShowControls(false)}
       onDoubleClick={handleFullScreenToggle}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <video ref={videoRef} className="max-h-full w-full object-contain" playsInline muted={isMuted} onClick={handlePlayerClick} />
       

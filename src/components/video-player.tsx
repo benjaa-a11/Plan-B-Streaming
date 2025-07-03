@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 type VideoPlayerProps = {
   src: string;
   posterUrl: string;
+  backdropUrl?: string;
 };
 
 const formatTime = (timeInSeconds: number): string => {
@@ -25,7 +26,7 @@ const formatTime = (timeInSeconds: number): string => {
   return `${mm}:${ss}`;
 };
 
-export default function VideoPlayer({ src, posterUrl }: VideoPlayerProps) {
+export default function VideoPlayer({ src, posterUrl, backdropUrl }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -92,7 +93,7 @@ export default function VideoPlayer({ src, posterUrl }: VideoPlayerProps) {
   }, []);
   
   const handleVideoClick = useCallback(() => {
-    setShowControls(true);
+    setShowControls(v => !v);
     resetControlsTimeout();
   }, [resetControlsTimeout]);
 
@@ -196,7 +197,8 @@ export default function VideoPlayer({ src, posterUrl }: VideoPlayerProps) {
 
   const VolumeIcon = isMuted ? VolumeX : Volume2;
   const timeWidth = duration >= 3600 ? "w-20" : "w-14";
-  const areControlsVisible = showControls || !isPlaying || error;
+  const areControlsVisible = showControls || !isPlaying || !!error;
+  const backgroundImageUrl = backdropUrl || posterUrl;
 
   return (
     <div 
@@ -206,11 +208,20 @@ export default function VideoPlayer({ src, posterUrl }: VideoPlayerProps) {
       onMouseMove={resetControlsTimeout}
       onMouseLeave={() => isPlaying && setShowControls(false)}
       onClick={handleVideoClick}
+      onContextMenu={(e) => e.preventDefault()}
     >
-      {isLoading && posterUrl && !error && (
+      {isLoading && backgroundImageUrl && !error && (
         <div className="absolute inset-0 z-0">
-          <Image src={posterUrl} alt="Movie poster background" fill objectFit="cover" className="blur-lg scale-110 opacity-30" />
-          <div className="absolute inset-0 bg-black/50" />
+          <Image 
+            src={backgroundImageUrl} 
+            alt="Movie backdrop" 
+            fill 
+            sizes="100vw"
+            quality={50}
+            priority
+            className="object-cover blur-md scale-105 opacity-40"
+          />
+          <div className="absolute inset-0 bg-black/60" />
         </div>
       )}
 
@@ -221,6 +232,7 @@ export default function VideoPlayer({ src, posterUrl }: VideoPlayerProps) {
         onDoubleClick={handleFullScreenToggle}
         playsInline
         autoPlay
+        muted={isMuted}
       />
       
       {isFullScreen && (
@@ -273,16 +285,16 @@ export default function VideoPlayer({ src, posterUrl }: VideoPlayerProps) {
       >
         <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2 pb-1 text-white">
             <button onClick={handlePlayPause} className="hover:text-primary transition-colors p-1" aria-label={isPlaying ? 'Pausar' : 'Reproducir'}>
-              {isPlaying ? <Pause size={28} /> : <Play size={28} />}
+              {isPlaying ? <Pause size={24} /> : <Play size={24} />}
             </button>
             
             <button onClick={handleMuteToggle} className="hover:text-primary transition-colors p-1" aria-label={isMuted ? 'Quitar silencio' : 'Silenciar'}>
-              <VolumeIcon size={28} />
+              <VolumeIcon size={24} />
             </button>
             
             {isFullScreen ? (
               <>
-                <span className={cn("text-xs sm:text-sm font-mono select-none text-center tabular-nums", timeWidth)}>
+                <span className={cn("font-mono select-none text-center tabular-nums text-xs sm:text-sm", timeWidth)}>
                     {formatTime(progress)}
                 </span>
                 
@@ -297,7 +309,7 @@ export default function VideoPlayer({ src, posterUrl }: VideoPlayerProps) {
                     aria-label="Video progress bar"
                 />
 
-                <span className={cn("text-xs sm:text-sm font-mono select-none text-center tabular-nums", timeWidth)}>
+                <span className={cn("font-mono select-none text-center tabular-nums text-xs sm:text-sm", timeWidth)}>
                     {formatTime(duration)}
                 </span>
               </>
@@ -306,7 +318,7 @@ export default function VideoPlayer({ src, posterUrl }: VideoPlayerProps) {
             )}
             
             <button onClick={handleFullScreenToggle} className="hover:text-primary transition-colors p-1" aria-label={isFullScreen ? 'Salir de pantalla completa' : 'Pantalla completa'}>
-              {isFullScreen ? <Minimize size={28} /> : <Maximize size={28} />}
+              {isFullScreen ? <Minimize size={24} /> : <Maximize size={24} />}
             </button>
         </div>
       </div>

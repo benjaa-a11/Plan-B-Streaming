@@ -33,7 +33,7 @@ export default function MovieView({ movie }: MovieViewProps) {
             <main>
               <div className="aspect-video relative w-full overflow-hidden rounded-lg bg-black shadow-2xl shadow-primary/10">
                 {movie.format === 'mp4' && movie.streamUrl ? (
-                   <VideoPlayer src={movie.streamUrl} posterUrl={movie.posterUrl} />
+                   <VideoPlayer src={movie.streamUrl} posterUrl={movie.posterUrl} backdropUrl={movie.backdropUrl} />
                 ) : movie.streamUrl ? (
                   <iframe
                     key={movie.id}
