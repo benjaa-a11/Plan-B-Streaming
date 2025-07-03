@@ -35,6 +35,7 @@ export type Movie = {
   tmdbID?: string;
   title: string;
   posterUrl: string;
+  backdropUrl?: string;
   streamUrl: string;
   category: string[];
   synopsis: string;
