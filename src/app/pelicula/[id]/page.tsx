@@ -1,4 +1,4 @@
-import { getMovieById } from "@/lib/actions";
+import { getMovieById, getSimilarMovies } from "@/lib/actions";
 import MovieView from "@/components/movie-view";
 import MovieNotFound from "@/components/movie-not-found";
 
@@ -10,6 +10,8 @@ export default async function MoviePage({ params }: { params: { id: string } }) 
   if (!movie) {
     return <MovieNotFound />;
   }
+
+  const similarMovies = await getSimilarMovies(movie.id, movie.category);
   
-  return <MovieView movie={movie} />;
+  return <MovieView movie={movie} similarMovies={similarMovies} />;
 }

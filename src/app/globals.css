@@ -1,36 +1,28 @@
-@font-face {
-  font-family: 'FIFASans';
-  src: url('https://www.fifa.com/static/media/FIFASans-Regular.753e37a8db21a26c1959.woff2') format('woff2');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 39 58% 95%; /* Lighter Cream White */
-    --foreground: 228 23% 11%; /* Lacquer Black */
-    --card: 39 58% 98%; /* Even Lighter Cream */
-    --card-foreground: 228 23% 11%;
-    --popover: 39 58% 98%;
-    --popover-foreground: 228 23% 11%;
-    --primary: 215 34% 40%; /* Blue Mountain */
-    --primary-foreground: 39 58% 90%; /* Cream White for contrast */
-    --secondary: 39 30% 91%;
-    --secondary-foreground: 228 23% 11%;
-    --muted: 39 30% 91%;
-    --muted-foreground: 228 23% 35%;
-    --accent: 39 30% 88%;
-    --accent-foreground: 228 23% 11%;
+    --background: 220 20% 97%; /* Very Light Cool Grey */
+    --foreground: 224 71.4% 4.1%; /* Near Black */
+    --card: 220 20% 99%; /* Almost White */
+    --card-foreground: 224 71.4% 4.1%;
+    --popover: 220 20% 99%;
+    --popover-foreground: 224 71.4% 4.1%;
+    --primary: 215 34% 38%; /* Dark Petrol Blue */
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 216 34% 47%; /* Muted Blue */
+    --accent-foreground: 210 20% 98%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 39 30% 85%;
-    --input: 39 30% 85%;
-    --ring: 215 34% 40%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 216 34% 47%;
     --radius: 0.75rem;
     --chart-1: 215 70% 50%;
     --chart-2: 160 60% 45%;
@@ -40,25 +32,25 @@
   }
 
   .dark {
-    --background: 228 23% 11%; /* Lacquer Black */
-    --foreground: 39 58% 86%; /* Cream White */
-    --card: 228 20% 16%;
-    --card-foreground: 39 58% 86%;
-    --popover: 228 23% 11%;
-    --popover-foreground: 39 58% 86%;
-    --primary: 215 34% 45%; /* Slightly lighter Blue Mountain for better pop */
-    --primary-foreground: 39 58% 95%;
-    --secondary: 228 20% 20%;
-    --secondary-foreground: 39 58% 86%;
-    --muted: 228 20% 20%;
-    --muted-foreground: 39 58% 65%;
-    --accent: 228 20% 25%;
-    --accent-foreground: 39 58% 86%;
+    --background: 224 71.4% 4.1%; /* Near Black */
+    --foreground: 210 20% 98%; /* Almost White */
+    --card: 224 71.4% 6.1%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 216 34% 52%; /* Brighter Petrol Blue */
+    --primary-foreground: 210 20% 98%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 216 34% 47%; /* Muted Blue */
+    --accent-foreground: 210 20% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 228 20% 25%;
-    --input: 228 20% 25%;
-    --ring: 215 34% 45%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 216 34% 47%;
   }
 }
 
@@ -68,5 +60,13 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Poppins', sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+  }
+  p, span, div, button, a, input, textarea {
+    font-family: 'PT Sans', sans-serif;
   }
 }

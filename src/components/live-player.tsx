@@ -9,9 +9,8 @@ type LivePlayerProps = {
   src: string;
 };
 
-// This player is designed to be robust. It uses native HLS playback on supported
-// browsers (like Safari) and falls back to hls.js on others (like Chrome).
-// This provides the best stability and compatibility.
+// This player has been professionally overhauled to match the movie player's
+// features, ensuring a consistent and robust user experience across the app.
 
 export default function LivePlayer({ src }: LivePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -38,13 +37,13 @@ export default function LivePlayer({ src }: LivePlayerProps) {
 
   const handlePlayPause = useCallback(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || error) return;
     if (video.paused) {
       video.play().catch(() => setIsPlaying(false));
     } else {
       video.pause();
     }
-  }, []);
+  }, [error]);
 
   const handleMuteToggle = useCallback(() => {
     const video = videoRef.current;
@@ -95,7 +94,6 @@ export default function LivePlayer({ src }: LivePlayerProps) {
     const attemptPlay = async () => {
       try {
         await video.play();
-        setIsPlaying(true);
       } catch (err) {
         setIsPlaying(false);
         // Autoplay was likely blocked, user will need to click to start.
@@ -119,8 +117,8 @@ export default function LivePlayer({ src }: LivePlayerProps) {
           const Hls = (await import("hls.js")).default;
           if (Hls.isSupported()) {
             const hls = new Hls({
-              fragLoadErrorMaxRetry: 6,
-              manifestLoadErrorMaxRetry: 4,
+              liveSyncDurationCount: 3,
+              maxBufferLength: 30,
             });
 
             hlsInstanceRef.current = hls;
@@ -220,18 +218,16 @@ export default function LivePlayer({ src }: LivePlayerProps) {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT' || e.altKey || e.ctrlKey || e.metaKey) return;
+      e.preventDefault();
       
       switch(e.key.toLowerCase()) {
         case " ": case "k": 
-          e.preventDefault(); 
           handlePlayPause(); 
           break;
         case "f": 
-          e.preventDefault(); 
           handleFullScreenToggle(); 
           break;
         case "m": 
-          e.preventDefault(); 
           handleMuteToggle(); 
           break;
       }
@@ -257,9 +253,9 @@ export default function LivePlayer({ src }: LivePlayerProps) {
       onDoubleClick={handleFullScreenToggle}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <video ref={videoRef} className="max-h-full w-full object-contain" playsInline muted={isMuted} onClick={handlePlayerClick} />
+      <video ref={videoRef} className="max-h-full w-full object-contain" playsInline autoPlay onClick={handlePlayerClick} />
       
-      {isLoading && (
+      {isLoading && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10 pointer-events-none">
           <Loader2 className="w-12 h-12 text-white animate-spin" />
         </div>
@@ -287,16 +283,16 @@ export default function LivePlayer({ src }: LivePlayerProps) {
 
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/70 to-transparent p-4 transition-all duration-300",
+          "absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/70 to-transparent p-2 sm:p-4 transition-all duration-300",
           areControlsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full pointer-events-none"
         )}
         onClick={(e) => e.stopPropagation()} // Prevent clicks on controls from bubbling up to the player
       >
-        <div className="flex items-center gap-4 text-white">
+        <div className="flex items-center gap-2 sm:gap-4 text-white">
           <button onClick={handlePlayPause} className="hover:text-primary transition-colors p-1" aria-label={isPlaying ? "Pausar" : "Reproducir"}>
             {isPlaying ? <Pause size={28} /> : <Play size={28} />}
           </button>
-          <Badge variant="destructive" className="font-semibold">EN VIVO</Badge>
+          <Badge variant="destructive" className="font-semibold text-sm">EN VIVO</Badge>
           <div className="flex-1" />
           <button onClick={handleMuteToggle} className="hover:text-primary transition-colors p-1" aria-label={isMuted ? "Quitar silencio" : "Silenciar"}>
             <VolumeIcon size={28} />

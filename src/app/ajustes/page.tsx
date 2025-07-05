@@ -1,6 +1,6 @@
 "use client";
 
-import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -101,6 +101,7 @@ export default function SettingsPage() {
   const handleClearFavorites = () => {
     try {
       localStorage.removeItem('plan-b-favorites');
+      localStorage.removeItem('plan-b-movie-favorites');
       toast({
         title: (
           <div className="flex items-start gap-3">
@@ -108,7 +109,7 @@ export default function SettingsPage() {
             <div>
               <p className="font-semibold text-foreground">Favoritos eliminados</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Los datos de tus canales favoritos han sido borrados.
+                Los datos de tus favoritos han sido borrados.
               </p>
             </div>
           </div>
@@ -212,7 +213,7 @@ export default function SettingsPage() {
            <Separator />
           <SettingsRow
             title="Borrar favoritos"
-            description="Elimina todos los canales guardados como favoritos en este dispositivo."
+            description="Elimina todos los canales y películas guardados como favoritos en este dispositivo."
           >
              <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -225,7 +226,7 @@ export default function SettingsPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Esta acción es irreversible. Todos tus canales favoritos serán eliminados de este dispositivo.
+                      Esta acción es irreversible. Todos tus canales y películas favoritas serán eliminados de este dispositivo.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -258,4 +259,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

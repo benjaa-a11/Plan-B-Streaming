@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import type { Movie } from "@/types";
 import MovieCard from "./movie-card";
 import { Clapperboard } from "lucide-react";
@@ -13,17 +13,32 @@ type MovieBrowserProps = {
 export default function MovieBrowser({
   movies,
 }: MovieBrowserProps) {
-  const { searchTerm, selectedCategory } = useMovieFilters();
+  const { searchTerm, selectedCategory, setSearchTerm, setSelectedCategory } = useMovieFilters();
+
+  // By resetting the filters when the component unmounts, we ensure that
+  // the user always sees the full list of movies when they navigate to this page,
+  // without the jarring "flicker" of a client-side reset on page load.
+  useEffect(() => {
+    // This return function is the cleanup function, which runs on unmount.
+    return () => {
+      setSelectedCategory('Todos');
+      setSearchTerm('');
+    };
+  }, [setSelectedCategory, setSearchTerm]);
 
   const filteredMovies = useMemo(() => {
     return movies.filter((movie) => {
       if (!movie) return false;
-      const matchesCategory =
-        selectedCategory === "Todas" || movie.category?.includes(selectedCategory);
+
       const matchesSearch =
         (movie.title?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
         (movie.synopsis?.toLowerCase() ?? "").includes(searchTerm.toLowerCase());
-      return matchesCategory && matchesSearch;
+      
+      const matchesCategory =
+        selectedCategory === 'Todos' ||
+        (Array.isArray(movie.category) && movie.category.includes(selectedCategory));
+
+      return matchesSearch && matchesCategory;
     });
   }, [movies, searchTerm, selectedCategory]);
 
@@ -31,8 +46,8 @@ export default function MovieBrowser({
     <div className="space-y-8">
       {filteredMovies.length > 0 ? (
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {filteredMovies.map((movie) => (
-            <MovieCard key={movie.id} movie={movie} />
+          {filteredMovies.map((movie, index) => (
+            <MovieCard key={movie.id} movie={movie} index={index} />
           ))}
         </div>
       ) : (

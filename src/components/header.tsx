@@ -94,11 +94,10 @@ function MovieFilters() {
 
       <Select value={selectedCategory} onValueChange={setSelectedCategory}>
         <SelectTrigger
-          className="h-10 w-auto shrink-0 px-3 flex items-center justify-center bg-muted border-transparent focus:bg-background focus:border-input gap-2"
+          className="h-10 w-10 shrink-0 p-0 flex items-center justify-center bg-muted border-transparent hover:bg-accent/50 focus:bg-background focus:border-input"
           aria-label="Filtrar por categoría"
         >
           <ListFilter className="h-5 w-5 text-muted-foreground" />
-          <span className="hidden sm:inline text-muted-foreground">{selectedCategory}</span>
         </SelectTrigger>
         <SelectContent>
           {allCategories.map((category) => (

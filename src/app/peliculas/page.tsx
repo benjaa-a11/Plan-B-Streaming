@@ -1,7 +1,7 @@
 import { getMovies } from "@/lib/actions";
 import MovieBrowser from "@/components/movie-browser";
 
-export const revalidate = 0; // Force dynamic rendering to get fresh data
+export const dynamic = 'force-dynamic'; // Ensures the page is always rendered dynamically
 
 export default async function MoviesPage() {
   const movies = await getMovies();

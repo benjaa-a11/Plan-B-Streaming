@@ -1,10 +1,11 @@
+
 "use server";
 
 import { cache } from "react";
 import { db } from "./firebase";
-import { collection, getDocs, doc, getDoc, query, where, documentId, Timestamp } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query, where, documentId, Timestamp, collectionGroup } from "firebase/firestore";
 import type { Channel, Match, ChannelOption, Movie } from "@/types";
-import { placeholderChannels, placeholderMovies } from "./placeholder-data";
+import { placeholderChannels, placeholderMovies, placeholderMatches } from "./placeholder-data";
 
 // Helper function to use placeholder data as a fallback
 const useFallbackData = () => {
@@ -66,7 +67,7 @@ export const getChannelsByIds = async (ids: string[]): Promise<Channel[]> => {
   }
 
   try {
-    // Firestore 'in' query is limited to 30 elements in Next.js 14, so we chunk the IDs.
+    // Firestore 'in' query is limited to 30 elements, so we chunk the IDs.
     const chunks: string[][] = [];
     for (let i = 0; i < ids.length; i += 30) {
         chunks.push(ids.slice(i, i + 30));
@@ -106,94 +107,146 @@ export const getChannelsByCategory = async (category: string, excludeId?: string
     const isSameCategory = channel.category === category;
     const isNotExcluded = excludeId ? channel.id !== excludeId : true;
     return isSameCategory && isNotExcluded;
-  }).slice(0, 5); // Return a max of 5 related channels
+  }).slice(0, 4); // Return a max of 4 related channels
 };
 
-export const getAgendaMatches = async (): Promise<Match[]> => {
+export const getAgendaMatches = cache(async (): Promise<Match[]> => {
   try {
-    const allChannels = await getChannels();
-    const allChannelsMap = new Map(allChannels.map(c => [c.id, { id: c.id, name: c.name, logoUrl: c.logoUrl }]));
-    
     const now = new Date();
     const timeZone = 'America/Argentina/Buenos_Aires';
-
-    // Get the current date parts in Argentina's timezone to avoid server timezone issues.
-    // This is a robust way to determine what "today" is in Argentina, regardless of server location.
-    const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone,
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-    }).formatToParts(now);
-
+    
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(now);
     const year = parseInt(parts.find(p => p.type === 'year')!.value, 10);
     const month = parseInt(parts.find(p => p.type === 'month')!.value, 10);
     const day = parseInt(parts.find(p => p.type === 'day')!.value, 10);
-
-    // Create Date objects representing the start and end of "today" in Argentina, converted to UTC.
-    // 00:00 in ART (UTC-3) is 03:00 in UTC.
-    const startOfTodayUTC = new Date(Date.UTC(year, month - 1, day, 3, 0, 0));
-    // 00:00 on the next day in ART is 03:00 UTC on the next day.
+    
+    const startOfTodayUTC = new Date(Date.UTC(year, month - 1, day, 3, 0, 0)); 
     const endOfTodayUTC = new Date(Date.UTC(year, month - 1, day + 1, 3, 0, 0));
 
-    const matchCollections = ["mdc25", "copaargentina"];
-    let allMatches: Match[] = [];
+    const agendaQuery = query(
+        collection(db, "agenda"),
+        where("time", ">=", Timestamp.fromDate(startOfTodayUTC)),
+        where("time", "<", Timestamp.fromDate(endOfTodayUTC))
+    );
+    const agendaSnapshot = await getDocs(agendaQuery);
 
-    for (const coll of matchCollections) {
-      // Query Firestore using the calculated and reliable UTC timestamps
-      const q = query(
-          collection(db, coll),
-          where("matchTimestamp", ">=", Timestamp.fromDate(startOfTodayUTC)),
-          where("matchTimestamp", "<", Timestamp.fromDate(endOfTodayUTC))
-      );
+    const rawMatches = agendaSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(data => {
+            const matchTimestamp = (data.time as Timestamp).toDate();
+            const timeSinceStart = now.getTime() - matchTimestamp.getTime();
+            return timeSinceStart <= (180 * 60 * 1000); 
+        });
 
-      const querySnapshot = await getDocs(q);
-
-      querySnapshot.forEach(docSnap => {
-          const data = docSnap.data();
-          const matchTimestamp = (data.matchTimestamp as Timestamp).toDate();
-          
-          const timeSinceStart = now.getTime() - matchTimestamp.getTime();
-          // Hide match 2 hours and 15 minutes after it started (135 minutes)
-          if (timeSinceStart > (135 * 60 * 1000)) {
-              return; // Skip this match as it has finished
-          }
-
-          const channelOptions: ChannelOption[] = (data.channels || []).map((id: string) => 
-              allChannelsMap.get(id)
-          ).filter((c: ChannelOption | undefined): c is ChannelOption => !!c);
-          
-          const isLive = now.getTime() >= matchTimestamp.getTime();
-          // Button is enabled 30 mins before match
-          const isWatchable = matchTimestamp.getTime() - now.getTime() <= (30 * 60 * 1000);
-
-          allMatches.push({
-              id: docSnap.id,
-              team1: data.team1,
-              team1Logo: data.team1Logo,
-              team2: data.team2,
-              team2Logo: data.team2Logo,
-              time: matchTimestamp.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires', hour12: false }),
-              isLive: isLive,
-              isWatchable: isWatchable,
-              channels: channelOptions,
-              matchDetails: data.matchDetails,
-              matchTimestamp: matchTimestamp,
-                              tournamentName: coll === 'mdc25' ? 'Copa del Mundo 2025' : 'Copa Argentina',
-                tournamentLogo: coll === 'mdc25' ? { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png', dark: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgncCRI6MuG41vT_fctpMHh4__yYc2efUPB7jpjV9Ro8unR17c9EMBQcaIYmjPShAnnLG1Q1m-9KbNmZoK2SJnWV9bwJ1FN4OMzgcBcy7inf6c9JCSKFz1uV31aC6B1u4EeGxDwQE4z24d7sVZOJzpFjBAG0KECpsJltnqNyH9_iaTnGukhT4gWGeGj_FQ/s512/Copa%20Mundial%20de%20Clubes.png' } : { light: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhMVspg_c6CLXysEZ8f-24rMQ8tfbZtn1WO8KDjZNpFXHmEWco46YoFncJZ1HEdT-nQ0azG-0sUUFiNVWe2eNPSSWI9Xk7aQXun4hrTfr-Ik-XE_SrTX0KzbYojh5kafAWACfwjlujielSrSU4E3bxq6RU8uwoBW4N5-3LCqYkbPa6xvENXZ2O3prv0DHA/s512/Copa%20Argentina%20AXION%20energy.png', dark: 'https://blogger.googleusercontent.com/img/a/AVvXsEi9UORURfsnLGoEWprgs4a69QnccK54jCUVTi-9jJ8aZrWgAakBfIV6957zDUxQ8HDFJKvusZ9av0KuIdJa9y4vx9Ut-QTlsHd755hTVSFBxa_d1DkIwCDDxxZxzmhIRXNONSWKwVc9DzIh6fjrhGLRodCYLBaw99cZTX90tPzSIcmgEY3g7Ma2kUFO=s512' },
-            });
-      });
+    if (rawMatches.length === 0) {
+        console.warn("No matches found in Firebase for today. Using placeholder data.");
+        return placeholderMatches;
     }
     
-    // Sort all combined matches by time
+    const teamIds = new Set<string>();
+    const tournamentIds = new Set<string>();
+    const channelIds = new Set<string>();
+    
+    const extractId = (field: any): string | undefined => {
+      if (!field) return undefined;
+      return typeof field === 'string' ? field : field.id;
+    };
+
+    rawMatches.forEach(match => {
+        const team1Id = extractId(match.team1);
+        const team2Id = extractId(match.team2);
+        const tournamentId = extractId(match.tournamentId);
+
+        if (team1Id) teamIds.add(team1Id);
+        if (team2Id) teamIds.add(team2Id);
+        if (tournamentId) tournamentIds.add(tournamentId);
+        if (match.channels) match.channels.forEach((c: string) => channelIds.add(c));
+    });
+
+    // Fetch all related data in parallel
+    const teamDocsPromise = teamIds.size > 0 ? getDocs(collectionGroup(db, 'clubs')) : Promise.resolve({ docs: [] });
+    
+    const tournamentPromises = [];
+    const tournamentIdsArray = Array.from(tournamentIds);
+    for (let i = 0; i < tournamentIdsArray.length; i += 30) {
+        const chunk = tournamentIdsArray.slice(i, i + 30);
+        if (chunk.length > 0) {
+            tournamentPromises.push(getDocs(query(collection(db, 'tournaments'), where("id", "in", chunk))));
+        }
+    }
+    const tournamentsPromise = Promise.all(tournamentPromises);
+
+    const channelsPromise = getChannelsByIds(Array.from(channelIds));
+
+    const [allTeamsSnapshot, tournamentSnapshots, channels] = await Promise.all([
+        teamDocsPromise,
+        tournamentsPromise,
+        channelsPromise
+    ]);
+
+    // Create maps for efficient lookup
+    const teamsMap = new Map();
+    allTeamsSnapshot.docs.forEach(doc => {
+        if (teamIds.has(doc.id)) {
+            teamsMap.set(doc.id, doc.data());
+        }
+    });
+
+    const tournamentDocs = tournamentSnapshots.flatMap(snap => snap.docs);
+    const tournamentsMap = new Map(tournamentDocs.map(doc => [doc.data().id, doc.data()]));
+    const channelsMap = new Map(channels.map(c => [c.id, { id: c.id, name: c.name, logoUrl: c.logoUrl }]));
+    
+    const allMatches: Match[] = rawMatches.map(data => {
+        const matchTimestamp = (data.time as Timestamp).toDate();
+        
+        const team1Id = extractId(data.team1);
+        const team2Id = extractId(data.team2);
+        const tournamentId = extractId(data.tournamentId);
+
+        const team1Data = teamsMap.get(team1Id);
+        const team2Data = teamsMap.get(team2Id);
+        const tournamentData = tournamentsMap.get(tournamentId);
+
+        let tournamentLogo: Match['tournamentLogo'] = undefined;
+        if (tournamentData?.logoUrl) {
+            if (Array.isArray(tournamentData.logoUrl) && tournamentData.logoUrl.length > 1) {
+                tournamentLogo = { dark: tournamentData.logoUrl[0], light: tournamentData.logoUrl[1] };
+            } else if (Array.isArray(tournamentData.logoUrl) && tournamentData.logoUrl.length === 1) {
+                tournamentLogo = tournamentData.logoUrl[0];
+            }
+        }
+
+        const channelOptions: ChannelOption[] = (data.channels || []).map((id: string) =>
+            channelsMap.get(id)
+        ).filter((c: ChannelOption | undefined): c is ChannelOption => !!c);
+
+        const isLive = now.getTime() >= matchTimestamp.getTime();
+        const isWatchable = matchTimestamp.getTime() - now.getTime() <= (30 * 60 * 1000);
+
+        return {
+            id: data.id,
+            team1: team1Data?.name || 'Equipo A',
+            team1Logo: team1Data?.logoUrl,
+            team2: team2Data?.name || 'Equipo B',
+            team2Logo: team2Data?.logoUrl,
+            time: matchTimestamp.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires', hour12: false }),
+            isLive: isLive,
+            isWatchable: isWatchable,
+            channels: channelOptions,
+            dates: data.dates,
+            matchTimestamp: matchTimestamp,
+            tournamentName: tournamentData?.name,
+            tournamentLogo: tournamentLogo,
+        };
+    });
+
     return allMatches.sort((a, b) => a.matchTimestamp.getTime() - b.matchTimestamp.getTime());
 
   } catch (error) {
-    console.error("Error al obtener partidos de Firebase:", error);
-    // Return empty array on error as there is no placeholder match data
-    return [];
+    console.error("Error al obtener partidos de la agenda:", error);
+    return placeholderMatches;
   }
-};
+});
 
 
 // --- MOVIES ---
@@ -238,11 +291,40 @@ const _fetchTMDbCredits = cache(async (tmdbID: string) => {
   }
 });
 
+const _fetchTMDbVideos = cache(async (tmdbID: string) => {
+  if (!tmdbID || !TMDB_API_KEY) return null;
+  try {
+    const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}/videos?api_key=${TMDB_API_KEY}&language=es-ES,en-US`);
+    if (!response.ok) {
+      console.error(`Error fetching TMDb videos for ${tmdbID}: ${response.statusText}`);
+      return null;
+    }
+    const data = await response.json();
+    if (data.results && data.results.length > 0) {
+      // Prioritize official trailers in Spanish, then English, then any trailer
+      const trailers = data.results.filter((v: any) => v.site === 'YouTube' && v.type === 'Trailer');
+      const officialSpanishTrailer = trailers.find((v: any) => v.iso_639_1 === 'es' && v.official);
+      const spanishTrailer = trailers.find((v: any) => v.iso_639_1 === 'es');
+      const officialEnglishTrailer = trailers.find((v: any) => v.official);
+      const anyTrailer = trailers[0];
+
+      const bestTrailer = officialSpanishTrailer || spanishTrailer || officialEnglishTrailer || anyTrailer;
+      return bestTrailer ? `https://www.youtube.com/embed/${bestTrailer.key}` : null;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching videos from TMDb for ${tmdbID}:`, error);
+    return null;
+  }
+});
+
+
 const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Movie> => {
   if (firestoreMovie.tmdbID) {
-    const [movieData, creditsData] = await Promise.all([
+    const [movieData, creditsData, videoUrl] = await Promise.all([
       _fetchTMDbData(firestoreMovie.tmdbID),
       _fetchTMDbCredits(firestoreMovie.tmdbID),
+      _fetchTMDbVideos(firestoreMovie.tmdbID),
     ]);
 
     if (movieData) {
@@ -269,10 +351,11 @@ const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Mov
         posterUrl: firestoreMovie.posterUrl || (movieData.poster_path ? `${TMDB_IMAGE_BASE_URL}${movieData.poster_path}` : 'https://placehold.co/500x750.png'),
         backdropUrl: movieData.backdrop_path ? `${TMDB_BACKDROP_BASE_URL}${movieData.backdrop_path}` : undefined,
         streamUrl: firestoreMovie.streamUrl,
+        trailerUrl: videoUrl,
         category: firestoreMovie.category || movieData.genres?.map((g: any) => g.name) || [],
         synopsis: firestoreMovie.synopsis || movieData.overview,
         year: firestoreMovie.year || (movieData.release_date ? parseInt(movieData.release_date.split('-')[0], 10) : undefined),
-        duration: finalDuration,
+        duration: finalDuration || "N/A",
         format: firestoreMovie.format,
         director: firestoreMovie.director || director,
         actors: firestoreMovie.actors || actors,
@@ -344,3 +427,23 @@ export const getMovieCategories = async (): Promise<string[]> => {
   const categories = new Set(movies.flatMap(movie => movie.category || []));
   return Array.from(categories).sort();
 };
+
+export const getSimilarMovies = cache(async (currentMovieId: string, categories: string[] = [], limit: number = 10): Promise<Movie[]> => {
+  if (!categories || categories.length === 0) {
+    return [];
+  }
+  
+  try {
+    const allMovies = await getMovies();
+    const similar = allMovies
+      .filter(movie => 
+        movie.id !== currentMovieId && 
+        movie.category?.some(cat => categories.includes(cat))
+      )
+      .slice(0, limit);
+    return similar;
+  } catch (error) {
+    console.error("Error fetching similar movies:", error);
+    return [];
+  }
+});

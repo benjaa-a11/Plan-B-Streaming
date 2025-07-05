@@ -10,6 +10,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -22,6 +23,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import React from "react";
 
 type AgendaCardProps = {
     match: Match;
@@ -60,21 +62,28 @@ const AgendaCard = ({ match }: AgendaCardProps) => {
             </>
         );
 
-        const desktopChannelLinks = match.channels.map((channel) => (
-            <DropdownMenuItem key={channel.id} asChild className="p-0">
-                <Link href={`/canal/${channel.id}`} className="flex items-center gap-3 w-full px-2 py-1.5">
-                    {channel.logoUrl ? (
-                        <Image src={channel.logoUrl} alt={channel.name} width={24} height={24} className="h-6 w-auto object-contain" sizes="24px" data-ai-hint="channel logo"/>
-                    ) : (
-                        <Clapperboard className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <span>{channel.name}</span>
-                </Link>
-            </DropdownMenuItem>
-        ));
+        const desktopChannelLinks = match.channels.flatMap((channel, index) => {
+            const item = (
+                <DropdownMenuItem key={channel.id} asChild className="p-0">
+                    <Link href={`/canal/${channel.id}`} className="flex items-center gap-3 w-full px-2 py-1.5">
+                        {channel.logoUrl ? (
+                            <Image src={channel.logoUrl} alt={channel.name} width={24} height={24} className="h-6 w-auto object-contain" sizes="24px" data-ai-hint="channel logo"/>
+                        ) : (
+                            <Clapperboard className="h-5 w-5 text-muted-foreground" />
+                        )}
+                        <span>{channel.name}</span>
+                    </Link>
+                </DropdownMenuItem>
+            );
+
+            if (index < match.channels.length - 1) {
+                return [item, <DropdownMenuSeparator key={`sep-${channel.id}`} />];
+            }
+            return [item];
+        });
 
         const mobileChannelLinks = match.channels.map((channel) => (
-             <Link key={channel.id} href={`/canal/${channel.id}`} className="flex items-center gap-4 w-full text-left p-3 rounded-lg transition-colors hover:bg-muted">
+             <Link key={channel.id} href={`/canal/${channel.id}`} className="flex items-center gap-4 w-full text-left px-6 py-4 transition-colors hover:bg-muted">
                 {channel.logoUrl ? (
                     <Image src={channel.logoUrl} alt={channel.name} width={40} height={40} className="h-10 w-auto object-contain" sizes="40px" data-ai-hint="channel logo"/>
                 ) : (
@@ -105,12 +114,12 @@ const AgendaCard = ({ match }: AgendaCardProps) => {
                             {commonButtonContent}
                         </Button>
                     </SheetTrigger>
-                    <SheetContent side="bottom" className="rounded-t-2xl max-h-[80dvh] flex flex-col">
-                        <SheetHeader className="text-left flex-shrink-0">
+                    <SheetContent side="bottom" className="rounded-t-2xl max-h-[80dvh] flex flex-col p-0">
+                        <SheetHeader className="text-left flex-shrink-0 border-b px-6 pt-6 pb-4">
                             <SheetTitle>Elige un canal</SheetTitle>
                         </SheetHeader>
                         <ScrollArea className="flex-grow">
-                            <div className="flex flex-col gap-2 py-4 pr-4">
+                            <div className="flex flex-col divide-y divide-border/50">
                                 {mobileChannelLinks}
                             </div>
                         </ScrollArea>

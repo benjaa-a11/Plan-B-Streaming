@@ -88,17 +88,19 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
     setCurrentStreamIndex(nextIndex);
     toast({
       title: (
-        <div className="flex items-start gap-3">
-          <SwitchCamera className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-foreground">Fuente Cambiada</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Se ha seleccionado la Opción {nextIndex + 1} de {streamLinks.length}.
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">
+            <SwitchCamera className="h-6 w-6 text-primary" />
+          </div>
+          <div className="flex-grow">
+            <p className="font-semibold text-foreground">Cambiando de señal</p>
+            <p className="text-sm text-muted-foreground">
+              Viendo Opción <span className="font-bold text-foreground">{nextIndex + 1}</span> de <span className="font-bold text-foreground">{streamLinks.length}</span>
             </p>
           </div>
         </div>
       ),
-      duration: 4000,
+      duration: 3000,
     });
   };
 
@@ -192,7 +194,7 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
             {relatedChannels.length > 0 && (
                <aside className="mt-12">
                   <h2 className="text-2xl font-bold tracking-tight">Más en {channel.category}</h2>
-                  <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                  <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
                       {relatedChannels.map((c, index) => <ChannelCard key={c.id} channel={c} index={index} />)}
                   </div>
               </aside>
