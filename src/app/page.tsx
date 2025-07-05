@@ -2,7 +2,7 @@ import { getChannels, getAgendaMatches } from "@/lib/actions";
 import ChannelBrowser from "@/components/channel-browser";
 import MatchesHero from "@/components/matches-hero";
 
-export const revalidate = 0; // Force dynamic rendering and no caching
+export const dynamic = 'force-dynamic'; // Force dynamic rendering and no caching
 
 export default async function Home() {
   const [channels, matches] = await Promise.all([
