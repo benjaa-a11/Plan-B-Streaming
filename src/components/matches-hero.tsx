@@ -238,10 +238,10 @@ export default function MatchesHero({ matches }: MatchesHeroProps) {
     }
 
     return (
-        <div className="mb-12">
-            <div className="mb-4">
-                <h1 className="text-3xl font-bold tracking-tight">Partidos de Hoy</h1>
-                <p className="text-muted-foreground">La agenda del día en un solo lugar.</p>
+        <div className="mb-8">
+            <div className="mb-6 text-center">
+                <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Partidos de Hoy</h1>
+                <p className="mt-1 text-md sm:text-lg text-muted-foreground max-w-2xl mx-auto">La agenda del día en un solo lugar.</p>
             </div>
             {matches.length > 1 ? (
                 <ScrollArea className="w-full whitespace-nowrap rounded-lg">
