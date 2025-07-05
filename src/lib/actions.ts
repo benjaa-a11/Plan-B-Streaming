@@ -13,8 +13,8 @@ const useFallbackData = () => {
   return placeholderChannels;
 };
 
-// Cached version of getChannels
-export const getChannels = cache(async (): Promise<Channel[]> => {
+// Uncached version of getChannels to ensure data is always fresh
+export const getChannels = async (): Promise<Channel[]> => {
   try {
     const channelsCollection = collection(db, "channels");
     const channelSnapshot = await getDocs(query(channelsCollection));
@@ -33,7 +33,7 @@ export const getChannels = cache(async (): Promise<Channel[]> => {
     console.error("Error al obtener canales de Firebase:", error);
     return useFallbackData();
   }
-});
+};
 
 export const getChannelById = async (id: string): Promise<Channel | null> => {
   try {
@@ -110,7 +110,7 @@ export const getChannelsByCategory = async (category: string, excludeId?: string
   }).slice(0, 4); // Return a max of 4 related channels
 };
 
-export const getAgendaMatches = cache(async (): Promise<Match[]> => {
+export const getAgendaMatches = async (): Promise<Match[]> => {
   try {
     const now = new Date();
     const timeZone = 'America/Argentina/Buenos_Aires';
@@ -246,7 +246,7 @@ export const getAgendaMatches = cache(async (): Promise<Match[]> => {
     console.error("Error al obtener partidos de la agenda:", error);
     return placeholderMatches;
   }
-});
+};
 
 
 // --- MOVIES ---
@@ -376,8 +376,8 @@ const useMovieFallbackData = () => {
   return placeholderMovies;
 };
 
-// Cached version of getMovies
-export const getMovies = cache(async (): Promise<Movie[]> => {
+// Uncached version of getMovies to ensure data is always fresh
+export const getMovies = async (): Promise<Movie[]> => {
   try {
     const moviesCollection = collection(db, "peliculas");
     const movieSnapshot = await getDocs(query(moviesCollection));
@@ -394,7 +394,7 @@ export const getMovies = cache(async (): Promise<Movie[]> => {
     console.error("Error al obtener películas de Firebase:", error);
     return useMovieFallbackData();
   }
-});
+};
 
 export const getMovieById = async (id: string): Promise<Movie | null> => {
   try {
@@ -428,7 +428,7 @@ export const getMovieCategories = async (): Promise<string[]> => {
   return Array.from(categories).sort();
 };
 
-export const getSimilarMovies = cache(async (currentMovieId: string, categories: string[] = [], limit: number = 10): Promise<Movie[]> => {
+export const getSimilarMovies = async (currentMovieId: string, categories: string[] = [], limit: number = 10): Promise<Movie[]> => {
   if (!categories || categories.length === 0) {
     return [];
   }
@@ -446,4 +446,4 @@ export const getSimilarMovies = cache(async (currentMovieId: string, categories:
     console.error("Error fetching similar movies:", error);
     return [];
   }
-});
+};
