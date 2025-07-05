@@ -12,44 +12,38 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'upload.wikimedia.org',
-        port: '',
-        pathname: '/**',
+        hostname: '**.wikimedia.org',
       },
       {
         protocol: 'https',
-        hostname: 'blogger.googleusercontent.com',
-        port: '',
-        pathname: '/**',
+        hostname: '**.googleusercontent.com',
       },
       {
         protocol: 'https',
         hostname: 'tvlibreonline.org',
-        port: '',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'm.media-amazon.com',
-        port: '',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'musicart.xboxlive.com',
-        port: '',
-        pathname: '/**',
       },
-     {
+      {
         protocol: 'https',
         hostname: 'image.tmdb.org',
-        port: '',
-        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.imgur.com',
       },
     ],
   },
