@@ -186,20 +186,20 @@ const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
             <CardContent className="p-6 flex flex-col items-center justify-center">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col items-center gap-2 text-center w-[100px]">
-                        <Image src={match.team1Logo || ''} alt={match.team1} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
+                        <Image unoptimized src={match.team1Logo || ''} alt={match.team1} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
                         <h3 className="font-semibold truncate w-full">{match.team1}</h3>
                     </div>
 
                     <div className="h-12 w-12 flex-shrink-0 flex items-center justify-center font-bold text-sm text-muted-foreground text-center">
                        {tournamentLogoUrl ? (
-                            <Image src={tournamentLogoUrl} alt={match.tournamentName || 'Tournament'} width={48} height={48} sizes="48px" className="h-12 w-12 object-contain" data-ai-hint="tournament logo" />
+                            <Image unoptimized src={tournamentLogoUrl} alt={match.tournamentName || 'Tournament'} width={48} height={48} sizes="48px" className="h-12 w-12 object-contain" data-ai-hint="tournament logo" />
                        ) : (
                            <span className="text-center">{match.tournamentName}</span>
                        )}
                     </div>
 
                     <div className="flex flex-col items-center gap-2 text-center w-[100px]">
-                        <Image src={match.team2Logo || ''} alt={match.team2} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
+                        <Image unoptimized src={match.team2Logo || ''} alt={match.team2} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
                         <h3 className="font-semibold truncate w-full">{match.team2}</h3>
                     </div>
                 </div>
@@ -239,7 +239,7 @@ export default function MatchesHero({ matches }: MatchesHeroProps) {
 
     return (
         <div className="mb-8">
-            <div className="mb-6 text-center">
+            <div className="mb-4 text-center">
                 <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Partidos de Hoy</h1>
                 <p className="mt-1 text-md sm:text-lg text-muted-foreground max-w-2xl mx-auto">La agenda del día en un solo lugar.</p>
             </div>
