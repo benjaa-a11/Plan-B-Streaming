@@ -7,27 +7,7 @@ const createTimestamp = (hour: number, minute: number = 0) => {
   return date;
 };
 
-// Placeholder data for matches, fully processed as if it came from the new `getAgendaMatches` function.
-export const placeholderMatches: Match[] = [
-  {
-    id: 'match-1',
-    team1: 'Argentina',
-    team1Logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Selecci%C3%B3n_de_f%C3%BAtbol_de_Argentina_crest.svg/1200px-Selecci%C3%B3n_de_f%C3%BAtbol_de_Argentina_crest.svg.png',
-    team2: 'Canadá',
-    team2Logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Canada_Soccer_logo.svg/1200px-Canada_Soccer_logo.svg.png',
-    time: '21:00',
-    isLive: new Date().getHours() >= 21,
-    isWatchable: true,
-    channels: [{ id: 'deportes-1', name: 'DSports', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/5a/DSports.png' }],
-    dates: 'Fase de Grupos · Jornada 1',
-    matchTimestamp: createTimestamp(21, 0),
-    tournamentName: 'Copa América 2024',
-    tournamentLogo: {
-      dark: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Copa_Am%C3%A9rica_2024_logo.svg/1200px-Copa_Am%C3%A9rica_2024_logo.svg.png',
-      light: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Copa_Am%C3%A9rica_2024_logo.svg/1200px-Copa_Am%C3%A9rica_2024_logo.svg.png',
-    },
-  },
-];
+
 
 
 export const placeholderMovies: Movie[] = [
