@@ -22,7 +22,6 @@ export const metadata: Metadata = {
   description: "Tu alternativa para ver televisión en vivo.",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/icon.png",
     apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
