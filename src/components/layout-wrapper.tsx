@@ -8,7 +8,7 @@ import DataRefresher from '@/components/data-refresher';
 
 export default function LayoutWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isPlayerPage = pathname.startsWith('/canal/') || pathname.startsWith('/pelicula/');
+  const isPlayerPage = pathname.startsWith('/canal/') || pathname.startsWith('/pelicula/') || pathname.startsWith('/radio/');
 
   return (
     <>

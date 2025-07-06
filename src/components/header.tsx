@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ListFilter, Settings, Heart, Popcorn } from "lucide-react";
+import { Search, ListFilter, Settings, Heart, Popcorn, Radio } from "lucide-react";
 import { useChannelFilters } from "@/hooks/use-channel-filters";
 import { useMovieFilters } from "@/hooks/use-movie-filters";
 import { useState, useEffect } from "react";
@@ -120,6 +120,14 @@ const HeaderContent = () => {
   if (pathname.startsWith('/peliculas')) {
     return <MovieFilters />;
   }
+  if (pathname.startsWith('/radio')) {
+    return (
+      <div className="flex items-center gap-3 w-full justify-center md:justify-start">
+        <Radio className="h-6 w-6 text-primary" />
+        <h1 className="text-xl font-semibold tracking-tight">Radio</h1>
+      </div>
+    );
+  }
   if (pathname.startsWith('/favoritos')) {
     return (
       <div className="flex items-center gap-3 w-full justify-center md:justify-start">
@@ -147,6 +155,8 @@ export default function Header() {
     setIsClient(true);
   }, []);
 
+  const pagesWithLogo = ["/", "/peliculas", "/radio"];
+
   if (!isClient) {
     return <header className="sticky top-0 z-40 w-full h-16 border-b border-border/40 bg-background/95 backdrop-blur-sm pt-safe-top" />;
   }
@@ -154,7 +164,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur-sm pt-safe-top">
       <div className="container flex h-16 items-center gap-4">
-        {pathname === "/" || pathname.startsWith('/peliculas') ? (
+        {pagesWithLogo.includes(pathname) ? (
           <div className="flex-none">
             <Logo />
           </div>
@@ -170,6 +180,12 @@ export default function Header() {
                 <Link href="/peliculas">
                   <Popcorn className="h-5 w-5 mr-2" />
                   Películas
+                </Link>
+              </Button>
+               <Button asChild variant={pathname.startsWith('/radio') ? "secondary" : "ghost"}>
+                <Link href="/radio">
+                  <Radio className="h-5 w-5 mr-2" />
+                  Radio
                 </Link>
               </Button>
               <Button asChild variant={pathname.startsWith('/favoritos') ? "secondary" : "ghost"}>

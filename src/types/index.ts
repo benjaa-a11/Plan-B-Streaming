@@ -47,3 +47,11 @@ export type Movie = {
   actors?: string;
   rating?: string;
 };
+
+export type Radio = {
+  id: string;
+  name: string;
+  logoUrl: string;
+  streamUrl: string[];
+  emisora?: string;
+};

@@ -22,7 +22,7 @@ This application is configured to connect to a Firebase project.
 
 1.  **Firebase Configuration**: The Firebase configuration is now securely managed via environment variables in your `.env.local` file.
 
-2.  **Firestore Database**: The application expects a Firestore database with four main collections: `channels`, `peliculas`, `agenda`, `tournaments`, and `teams`.
+2.  **Firestore Database**: The application expects a Firestore database with five main collections: `channels`, `radio`, `peliculas`, `agenda`, `tournaments`, and `teams`.
 
 3.  **Data Structure**:
     -   **`channels` Collection**: Each document represents a TV channel.
@@ -33,6 +33,14 @@ This application is configured to connect to a Firebase project.
           "streamUrl": ["https://... (primary link)", "https://... (fallback link)"],
           "category": "Category Name",
           "description": "A brief channel description."
+        }
+        ```
+    -   **`radio` Collection**: Each document represents a radio station.
+        ```json
+        {
+          "name": "Radio Name",
+          "logoUrl": "https://...",
+          "streamUrl": ["https://... (primary link)", "https://... (fallback link)"]
         }
         ```
 
@@ -103,5 +111,31 @@ This application is configured to connect to a Firebase project.
       }
     }
     ```
+
+### 5. Image Domain Configuration
+
+For security and performance, Next.js requires all external image hostnames to be explicitly whitelisted. If you need to add team logos or channel images from a new source (e.g., `i.imgur.com`), you must add its hostname to the `next.config.js` file.
+
+**Example: Adding a new domain**
+
+Open `next.config.js` and add a new object to the `remotePatterns` array:
+
+```javascript
+// next.config.js
+module.exports = {
+  // ... other configs
+  images: {
+    remotePatterns: [
+      // ... existing patterns
+      {
+        protocol: 'https',
+        hostname: 'new.image-host.com',
+      },
+    ],
+  },
+};
+```
+
+After modifying this file, **you must restart the development server** for the changes to take effect.
 
 For demonstration purposes, the application will use placeholder data if it cannot fetch data from Firebase.

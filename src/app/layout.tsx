@@ -2,12 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Poppins, PT_Sans } from 'next/font/google';
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { Toaster } from "@/components/ui/toaster";
-import LayoutWrapper from "@/components/layout-wrapper";
 import { getCategories, getMovieCategories } from "@/lib/actions";
-import { ChannelFilterProvider } from "@/hooks/use-channel-filters";
-import { MovieFilterProvider } from "@/hooks/use-movie-filters";
-import { ThemeProvider } from "next-themes";
+import { Providers } from "@/components/providers";
 
 const fontPoppins = Poppins({
   subsets: ['latin'],
@@ -68,19 +64,12 @@ export default async function RootLayout({
           fontPtSans.variable
         )}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          storageKey="plan-b-theme"
-          enableSystem
+        <Providers 
+          channelCategories={channelCategories} 
+          movieCategories={movieCategories}
         >
-          <ChannelFilterProvider initialCategories={channelCategories}>
-            <MovieFilterProvider initialCategories={movieCategories}>
-              <LayoutWrapper>{children}</LayoutWrapper>
-              <Toaster />
-            </MovieFilterProvider>
-          </ChannelFilterProvider>
-        </ThemeProvider>
+          {children}
+        </Providers>
       </body>
     </html>
   );

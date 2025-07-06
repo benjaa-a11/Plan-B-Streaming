@@ -13,4 +13,3 @@ export const placeholderMatches: Match[] = [];
 export const placeholderMovies: Movie[] = [];
 export const placeholderRadios: Radio[] = [];
 export const placeholderChannels: Channel[] = [];
-

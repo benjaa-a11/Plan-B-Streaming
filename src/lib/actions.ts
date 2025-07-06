@@ -4,8 +4,8 @@
 import { cache } from "react";
 import { db } from "./firebase";
 import { collection, getDocs, doc, getDoc, query, where, documentId, Timestamp, collectionGroup } from "firebase/firestore";
-import type { Channel, Match, ChannelOption, Movie } from "@/types";
-import { placeholderChannels, placeholderMovies, placeholderMatches } from "./placeholder-data";
+import type { Channel, Match, ChannelOption, Movie, Radio } from "@/types";
+import { placeholderChannels, placeholderMovies, placeholderMatches, placeholderRadios } from "./placeholder-data";
 
 // Helper function to use placeholder data as a fallback
 const useFallbackData = () => {
@@ -208,6 +208,8 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
                 tournamentLogo = { dark: tournamentData.logoUrl[0], light: tournamentData.logoUrl[1] };
             } else if (Array.isArray(tournamentData.logoUrl) && tournamentData.logoUrl.length === 1) {
                 tournamentLogo = tournamentData.logoUrl[0];
+            } else if (typeof tournamentData.logoUrl === 'string') {
+                tournamentLogo = tournamentData.logoUrl;
             }
         }
 
@@ -440,5 +442,59 @@ export const getSimilarMovies = async (currentMovieId: string, categories: strin
   } catch (error) {
     console.error("Error fetching similar movies:", error);
     return [];
+  }
+};
+
+
+// --- RADIOS ---
+
+const useRadioFallbackData = () => {
+  console.warn("Firebase no disponible o colección de radios vacía. Usando datos de demostración.");
+  return placeholderRadios;
+};
+
+export const getRadios = async (): Promise<Radio[]> => {
+  try {
+    const radiosCollection = collection(db, "radio");
+    const radioSnapshot = await getDocs(query(radiosCollection));
+    
+    if (radioSnapshot.empty) {
+      return useRadioFallbackData();
+    }
+    
+    const radios = radioSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Radio));
+    
+    return radios;
+  } catch (error) {
+    console.error("Error al obtener radios de Firebase:", error);
+    return useRadioFallbackData();
+  }
+};
+
+export const getRadioById = async (id: string): Promise<Radio | null> => {
+  try {
+    const radioDoc = doc(db, "radio", id);
+    const radioSnapshot = await getDoc(radioDoc);
+
+    if (radioSnapshot.exists()) {
+      return { id: radioSnapshot.id, ...radioSnapshot.data() } as Radio;
+    } else {
+      const fallbackRadio = placeholderRadios.find(r => r.id === id);
+      if (fallbackRadio) {
+        console.warn(`Radio con id ${id} no encontrada en Firebase. Usando dato de demostración.`);
+        return fallbackRadio;
+      }
+      return null;
+    }
+  } catch (error) {
+    console.error(`Error al obtener radio con id ${id}:`, error);
+    const fallbackRadio = placeholderRadios.find(r => r.id === id);
+    if (fallbackRadio) {
+      return fallbackRadio;
+    }
+    return null;
   }
 };
