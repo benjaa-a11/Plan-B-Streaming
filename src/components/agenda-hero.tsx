@@ -67,7 +67,7 @@ const AgendaCard = ({ match }: AgendaCardProps) => {
                 <DropdownMenuItem key={channel.id} asChild className="p-0">
                     <Link href={`/canal/${channel.id}`} className="flex items-center gap-3 w-full px-2 py-1.5">
                         {channel.logoUrl ? (
-                            <Image src={channel.logoUrl} alt={channel.name} width={24} height={24} className="h-6 w-auto object-contain" sizes="24px" data-ai-hint="channel logo"/>
+                            <Image unoptimized src={channel.logoUrl} alt={channel.name} width={24} height={24} className="h-6 w-auto object-contain" sizes="24px" data-ai-hint="channel logo"/>
                         ) : (
                             <Clapperboard className="h-5 w-5 text-muted-foreground" />
                         )}
@@ -85,7 +85,7 @@ const AgendaCard = ({ match }: AgendaCardProps) => {
         const mobileChannelLinks = match.channels.map((channel) => (
              <Link key={channel.id} href={`/canal/${channel.id}`} className="flex items-center gap-4 w-full text-left px-6 py-4 transition-colors hover:bg-muted">
                 {channel.logoUrl ? (
-                    <Image src={channel.logoUrl} alt={channel.name} width={40} height={40} className="h-10 w-auto object-contain" sizes="40px" data-ai-hint="channel logo"/>
+                    <Image unoptimized src={channel.logoUrl} alt={channel.name} width={40} height={40} className="h-10 w-auto object-contain" sizes="40px" data-ai-hint="channel logo"/>
                 ) : (
                     <Clapperboard className="h-8 w-8 text-muted-foreground" />
                 )}
@@ -142,11 +142,11 @@ const AgendaCard = ({ match }: AgendaCardProps) => {
 
             <div className="flex-1 space-y-1.5 min-w-0">
                 <div className="flex items-center gap-2">
-                    <Image src={match.team1Logo || ''} width={20} height={20} alt={match.team1} className="w-5 h-5 sm:w-6 sm:h-6 object-contain" sizes="24px" data-ai-hint="team logo" />
+                    <Image unoptimized src={match.team1Logo || ''} width={20} height={20} alt={match.team1} className="w-5 h-5 sm:w-6 sm:h-6 object-contain" sizes="24px" data-ai-hint="team logo" />
                     <span className="font-medium text-sm sm:text-base truncate">{match.team1}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Image src={match.team2Logo || ''} width={20} height={20} alt={match.team2} className="w-5 h-5 sm:w-6 sm:h-6 object-contain" sizes="24px" data-ai-hint="team logo" />
+                    <Image unoptimized src={match.team2Logo || ''} width={20} height={20} alt={match.team2} className="w-5 h-5 sm:w-6 sm:h-6 object-contain" sizes="24px" data-ai-hint="team logo" />
                     <span className="font-medium text-sm sm:text-base truncate">{match.team2}</span>
                 </div>
             </div>

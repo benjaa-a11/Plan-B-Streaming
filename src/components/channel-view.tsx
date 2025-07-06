@@ -116,7 +116,7 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
           <div className="flex items-center gap-3">
              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md">
                 {channel.logoUrl ? (
-                    <Image src={channel.logoUrl} alt={`Logo de ${channel.name}`} fill className="object-contain" sizes="40px"/>
+                    <Image unoptimized src={channel.logoUrl} alt={`Logo de ${channel.name}`} fill className="object-contain" sizes="40px"/>
                 ) : (
                     <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold">{channel.name.charAt(0)}</div>
                 )}

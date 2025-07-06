@@ -25,6 +25,7 @@ const ChannelCard = memo(function ChannelCard({ channel, index }: ChannelCardPro
 
           {channel.logoUrl ? (
             <Image
+              unoptimized
               src={channel.logoUrl}
               alt={`Logo de ${channel.name}`}
               fill
