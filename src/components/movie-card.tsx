@@ -32,6 +32,7 @@ const MovieCard = memo(function MovieCard({ movie, index = 0 }: MovieCardProps) 
           sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1200px) 25vw, 20vw"
           className="object-cover transition-transform duration-300 group-hover:scale-105"
           data-ai-hint="movie poster"
+          priority={index < 8}
         />
       </div>
       <div className="p-3">

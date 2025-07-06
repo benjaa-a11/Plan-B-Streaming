@@ -155,6 +155,7 @@ export default function AudioPlayer({ radio, currentStreamUrl }: AudioPlayerProp
                             sizes="(max-width: 768px) 50vw, 25vw"
                             className="object-contain"
                             unoptimized
+                            priority
                         />
                     ) : (
                         <div className="w-full h-full bg-muted flex items-center justify-center">
