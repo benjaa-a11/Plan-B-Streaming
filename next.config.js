@@ -23,6 +23,10 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'tvlibreonline.org',
+      },
+      {
+        protocol: 'https',
         hostname: 'm.media-amazon.com',
       },
       {
@@ -45,12 +49,6 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'i.ibb.co',
       },
-    ],
-  },
-};
-
-module.exports = nextConfig;
-
     ],
   },
 };
