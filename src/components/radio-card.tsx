@@ -13,11 +13,11 @@ const RadioCard = memo(function RadioCard({ radio, index }: RadioCardProps) {
   return (
     <Link 
       href={`/radio/${radio.id}`} 
-      className="group flex flex-col items-center gap-3 text-center outline-none transition-transform duration-300 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg opacity-0 animate-fade-in-up"
+      className="group block outline-none rounded-lg overflow-hidden transition-all duration-300 bg-card border hover:shadow-primary/30 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-0 animate-fade-in-up"
       title={radio.name}
       style={{ animationDelay: `${index * 40}ms` }}
     >
-        <div className="aspect-square w-full relative rounded-full overflow-hidden shadow-lg group-hover:shadow-primary/20 transition-shadow duration-300 border-2 border-transparent group-focus-visible:border-primary">
+        <div className="aspect-square w-full relative bg-muted/50 flex items-center justify-center">
           
           <div className="absolute inset-0 z-10 bg-black/50 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center justify-center">
             <PlayCircle className="h-12 w-12 text-white/80 transform transition-transform duration-300 group-hover:scale-110" />
@@ -29,7 +29,7 @@ const RadioCard = memo(function RadioCard({ radio, index }: RadioCardProps) {
               alt={`Logo de ${radio.name}`}
               fill
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-              className="object-cover bg-card"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
               data-ai-hint="radio logo"
               unoptimized
             />
@@ -40,8 +40,8 @@ const RadioCard = memo(function RadioCard({ radio, index }: RadioCardProps) {
           )}
         </div>
       
-      <div>
-        <h3 className="font-semibold text-foreground truncate w-32 sm:w-40">
+      <div className="p-3">
+        <h3 className="font-semibold text-foreground truncate">
           {radio.name}
         </h3>
          {radio.emisora && (
