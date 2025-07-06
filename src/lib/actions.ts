@@ -418,6 +418,51 @@ export const getMovieById = async (id: string): Promise<Movie | null> => {
   }
 };
 
+export const getMoviesByIds = async (ids: string[]): Promise<Movie[]> => {
+  if (!ids || ids.length === 0) {
+    return [];
+  }
+
+  try {
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += 30) {
+        chunks.push(ids.slice(i, i + 30));
+    }
+
+    const firestoreMoviesData: {id: string, data: any}[] = [];
+    for (const chunk of chunks) {
+        if (chunk.length === 0) continue;
+        const q = query(collection(db, "peliculas"), where(documentId(), "in", chunk));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(doc => {
+            firestoreMoviesData.push({ id: doc.id, data: doc.data() });
+        });
+    }
+    
+    if (firestoreMoviesData.length === 0) {
+        // Fallback for demo purposes if IDs not in firestore
+        const allPlaceholderMovies = await getMovies();
+        const placeholderMap = new Map(allPlaceholderMovies.map(m => [m.id, m]));
+        return ids.map(id => placeholderMap.get(id)).filter((m): m is Movie => !!m);
+    }
+
+    const enrichedMovies = await Promise.all(
+        firestoreMoviesData.map(movie => _enrichMovieData(movie.id, movie.data))
+    );
+
+    // Preserve original order
+    const movieMap = new Map(enrichedMovies.map(m => [m.id, m]));
+    return ids.map(id => movieMap.get(id)).filter((m): m is Movie => !!m);
+
+  } catch (error) {
+    console.error("Error fetching movies by IDs from Firebase:", error);
+    // Fallback to placeholder data for any matching IDs
+    const allPlaceholderMovies = await getMovies();
+    const placeholderMap = new Map(allPlaceholderMovies.map(m => [m.id, m]));
+    return ids.map(id => placeholderMap.get(id)).filter((m): m is Movie => !!m);
+  }
+};
+
 export const getMovieCategories = async (): Promise<string[]> => {
   const movies = await getMovies();
   if (!movies || movies.length === 0) return [];
