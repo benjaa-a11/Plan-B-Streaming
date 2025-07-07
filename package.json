@@ -42,6 +42,7 @@
     "firebase": "^11.9.1",
     "genkit": "^1.8.0",
     "hls.js": "^1.5.11",
+    "jose": "^5.4.1",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",
     "next-themes": "^0.3.0",
@@ -66,3 +67,4 @@
     "typescript": "^5"
   }
 }
+
