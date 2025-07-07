@@ -4,8 +4,8 @@
 import { cache } from "react";
 import { db } from "./firebase";
 import { collection, getDocs, doc, getDoc, query, where, documentId, Timestamp, collectionGroup } from "firebase/firestore";
-import type { Channel, Match, ChannelOption, Movie, Radio } from "@/types";
-import { placeholderChannels, placeholderMovies, placeholderMatches, placeholderRadios } from "./placeholder-data";
+import type { Channel, Match, ChannelOption, Movie, Radio, Tournament, Team } from "@/types";
+import { placeholderChannels, placeholderMovies, placeholderRadios, placeholderTournaments, placeholderTeams } from "./placeholder-data";
 
 // Helper function to resolve .pls file to an actual stream URL
 const _resolvePlsUrl = async (url: string): Promise<string | null> => {
@@ -58,12 +58,12 @@ const useFallbackData = () => {
 };
 
 // Uncached version of getChannels to ensure data is always fresh
-export const getChannels = async (): Promise<Channel[]> => {
+export const getChannels = async (includePlaceholders = false): Promise<Channel[]> => {
   try {
     const channelsCollection = collection(db, "channels");
     const channelSnapshot = await getDocs(query(channelsCollection));
     
-    if (channelSnapshot.empty) {
+    if (channelSnapshot.empty && includePlaceholders) {
       return useFallbackData();
     }
     
@@ -75,7 +75,8 @@ export const getChannels = async (): Promise<Channel[]> => {
     return channels;
   } catch (error) {
     console.error("Error al obtener canales de Firebase:", error);
-    return useFallbackData();
+    if (includePlaceholders) return useFallbackData();
+    return [];
   }
 };
 
@@ -88,7 +89,7 @@ export const getChannelById = async (id: string): Promise<Channel | null> => {
       return { id: channelSnapshot.id, ...channelSnapshot.data() } as Channel;
     } else {
        // Fallback for demo purposes if ID not in firestore
-      const fallbackChannel = placeholderChannels.find(c => c.id === id);
+      const fallbackChannel = (await getChannels(true)).find(c => c.id === id);
       if (fallbackChannel) {
         console.warn(`Canal con id ${id} no encontrado en Firebase. Usando dato de demostración.`);
         return fallbackChannel;
@@ -97,7 +98,7 @@ export const getChannelById = async (id: string): Promise<Channel | null> => {
     }
   } catch (error) {
     console.error(`Error al obtener canal con id ${id}:`, error);
-     const fallbackChannel = placeholderChannels.find(c => c.id === id);
+     const fallbackChannel = (await getChannels(true)).find(c => c.id === id);
       if (fallbackChannel) {
         return fallbackChannel;
       }
@@ -133,20 +134,20 @@ export const getChannelsByIds = async (ids: string[]): Promise<Channel[]> => {
   } catch (error) {
     console.error("Error fetching channels by IDs from Firebase:", error);
     // Fallback to placeholder data for any matching IDs
-    const allPlaceholderChannels = await getChannels();
+    const allPlaceholderChannels = await getChannels(true);
     const placeholderMap = new Map(allPlaceholderChannels.map(c => [c.id, c]));
     return ids.map(id => placeholderMap.get(id)).filter((c): c is Channel => !!c);
   }
 };
 
 export const getCategories = async (): Promise<string[]> => {
-  const channels = await getChannels();
+  const channels = await getChannels(true);
   const categories = new Set(channels.map(channel => channel.category));
   return Array.from(categories).sort();
 };
 
 export const getChannelsByCategory = async (category: string, excludeId?: string): Promise<Channel[]> => {
-  const allChannels = await getChannels();
+  const allChannels = await getChannels(true);
   return allChannels.filter(channel => {
     const isSameCategory = channel.category === category;
     const isNotExcluded = excludeId ? channel.id !== excludeId : true;
@@ -154,7 +155,7 @@ export const getChannelsByCategory = async (category: string, excludeId?: string
   }).slice(0, 4); // Return a max of 4 related channels
 };
 
-export const getAgendaMatches = async (): Promise<Match[]> => {
+export const getAgendaMatches = cache(async (): Promise<Match[]> => {
   try {
     const now = new Date();
     const timeZone = 'America/Argentina/Buenos_Aires';
@@ -183,8 +184,7 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
         });
 
     if (rawMatches.length === 0) {
-        console.warn("No matches found in Firebase for today. Using placeholder data.");
-        return placeholderMatches;
+        return [];
     }
     
     const teamIds = new Set<string>();
@@ -285,9 +285,9 @@ export const getAgendaMatches = async (): Promise<Match[]> => {
 
   } catch (error) {
     console.error("Error al obtener partidos de la agenda:", error);
-    return placeholderMatches;
+    return [];
   }
-};
+});
 
 
 // --- MOVIES ---
@@ -361,70 +361,74 @@ const _fetchTMDbVideos = cache(async (tmdbID: string) => {
 
 
 const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Movie> => {
-  if (firestoreMovie.tmdbID) {
-    const [movieData, creditsData, videoUrl] = await Promise.all([
-      _fetchTMDbData(firestoreMovie.tmdbID),
-      _fetchTMDbCredits(firestoreMovie.tmdbID),
-      _fetchTMDbVideos(firestoreMovie.tmdbID),
-    ]);
+  const [tmdbMovieData, tmdbCreditsData, tmdbVideoUrl] = firestoreMovie.tmdbID
+    ? await Promise.all([
+        _fetchTMDbData(firestoreMovie.tmdbID),
+        _fetchTMDbCredits(firestoreMovie.tmdbID),
+        _fetchTMDbVideos(firestoreMovie.tmdbID),
+      ])
+    : [null, null, null];
 
-    if (movieData) {
-      // Format duration
-      let finalDuration = firestoreMovie.duration;
-      if (!finalDuration && movieData.runtime) {
-        const hours = Math.floor(movieData.runtime / 60);
-        const minutes = movieData.runtime % 60;
-        if (hours > 0) {
-          finalDuration = `${hours}h ${minutes}m`;
-        } else {
-          finalDuration = `${minutes}m`;
-        }
-      }
+  // Logic to determine final values, prioritizing Firestore overrides
+  const title = firestoreMovie.title || tmdbMovieData?.title || 'Título no disponible';
+  
+  // THIS IS THE FIX. Ensure posterUrl is never an empty string.
+  const posterUrl = 
+    firestoreMovie.posterUrl || 
+    (tmdbMovieData?.poster_path ? `${TMDB_IMAGE_BASE_URL}${tmdbMovieData.poster_path}` : 'https://placehold.co/500x750.png');
 
-      // Get director and actors from credits
-      const director = creditsData?.crew?.find((person: any) => person.job === 'Director')?.name;
-      const actors = creditsData?.cast?.slice(0, 3).map((person: any) => person.name).join(', ');
-
-      return {
-        id: docId,
-        tmdbID: firestoreMovie.tmdbID,
-        title: firestoreMovie.title || movieData.title,
-        posterUrl: firestoreMovie.posterUrl || (movieData.poster_path ? `${TMDB_IMAGE_BASE_URL}${movieData.poster_path}` : 'https://placehold.co/500x750.png'),
-        backdropUrl: movieData.backdrop_path ? `${TMDB_BACKDROP_BASE_URL}${movieData.backdrop_path}` : undefined,
-        streamUrl: firestoreMovie.streamUrl,
-        trailerUrl: videoUrl,
-        category: firestoreMovie.category || movieData.genres?.map((g: any) => g.name) || [],
-        synopsis: firestoreMovie.synopsis || movieData.overview,
-        year: firestoreMovie.year || (movieData.release_date ? parseInt(movieData.release_date.split('-')[0], 10) : undefined),
-        duration: finalDuration || "N/A",
-        format: firestoreMovie.format,
-        director: firestoreMovie.director || director,
-        actors: firestoreMovie.actors || actors,
-        rating: firestoreMovie.rating || (movieData.vote_average ? movieData.vote_average.toFixed(1) : undefined),
-      };
-    }
+  const backdropUrl = tmdbMovieData?.backdrop_path ? `${TMDB_BACKDROP_BASE_URL}${tmdbMovieData.backdrop_path}` : undefined;
+  const synopsis = firestoreMovie.synopsis || tmdbMovieData?.overview || '';
+  const year = firestoreMovie.year || (tmdbMovieData?.release_date ? parseInt(tmdbMovieData.release_date.split('-')[0], 10) : undefined);
+  const category = firestoreMovie.category || tmdbMovieData?.genres?.map((g: any) => g.name) || [];
+  
+  let duration = firestoreMovie.duration;
+  if (!duration && tmdbMovieData?.runtime) {
+    const hours = Math.floor(tmdbMovieData.runtime / 60);
+    const minutes = tmdbMovieData.runtime % 60;
+    duration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   }
-  // Fallback to Firestore data if no tmdbID or API fetch fails
+
+  const director = firestoreMovie.director || tmdbCreditsData?.crew?.find((p: any) => p.job === 'Director')?.name;
+  const actors = firestoreMovie.actors || tmdbCreditsData?.cast?.slice(0, 3).map((p: any) => p.name).join(', ');
+  const rating = firestoreMovie.rating || (tmdbMovieData?.vote_average ? tmdbMovieData.vote_average.toFixed(1) : undefined);
+
   return {
     id: docId,
-    ...firestoreMovie,
-  } as Movie;
+    tmdbID: firestoreMovie.tmdbID,
+    streamUrl: firestoreMovie.streamUrl,
+    format: firestoreMovie.format,
+    trailerUrl: tmdbVideoUrl,
+    title,
+    posterUrl,
+    backdropUrl,
+    synopsis,
+    year,
+    category,
+    duration: duration || "N/A",
+    director,
+    actors,
+    rating,
+  };
 };
 
 
-const useMovieFallbackData = () => {
-  console.warn("Firebase no disponible o colección de películas vacía. Usando datos de demostración.");
-  return placeholderMovies;
+const useMovieFallbackData = (includePlaceholders: boolean) => {
+  if (includePlaceholders) {
+    console.warn("Firebase no disponible o colección de películas vacía. Usando datos de demostración.");
+    return placeholderMovies;
+  }
+  return [];
 };
 
 // Uncached version of getMovies to ensure data is always fresh
-export const getMovies = async (): Promise<Movie[]> => {
+export const getMovies = async (includePlaceholders = false): Promise<Movie[]> => {
   try {
     const moviesCollection = collection(db, "peliculas");
     const movieSnapshot = await getDocs(query(moviesCollection));
     
-    if (movieSnapshot.empty) {
-      return useMovieFallbackData();
+    if (movieSnapshot.empty && includePlaceholders) {
+      return useMovieFallbackData(true);
     }
     
     const moviePromises = movieSnapshot.docs.map(doc => _enrichMovieData(doc.id, doc.data()));
@@ -433,7 +437,7 @@ export const getMovies = async (): Promise<Movie[]> => {
     return movies;
   } catch (error) {
     console.error("Error al obtener películas de Firebase:", error);
-    return useMovieFallbackData();
+    return useMovieFallbackData(includePlaceholders);
   }
 };
 
@@ -445,7 +449,7 @@ export const getMovieById = async (id: string): Promise<Movie | null> => {
     if (movieSnapshot.exists()) {
       return await _enrichMovieData(movieSnapshot.id, movieSnapshot.data());
     } else {
-      const fallbackMovie = placeholderMovies.find(m => m.id === id);
+      const fallbackMovie = (await getMovies(true)).find(m => m.id === id);
       if (fallbackMovie) {
         console.warn(`Película con id ${id} no encontrada en Firebase. Usando dato de demostración.`);
         return fallbackMovie;
@@ -454,7 +458,7 @@ export const getMovieById = async (id: string): Promise<Movie | null> => {
     }
   } catch (error) {
     console.error(`Error al obtener película con id ${id}:`, error);
-    const fallbackMovie = placeholderMovies.find(m => m.id === id);
+    const fallbackMovie = (await getMovies(true)).find(m => m.id === id);
     if (fallbackMovie) {
       return fallbackMovie;
     }
@@ -485,7 +489,7 @@ export const getMoviesByIds = async (ids: string[]): Promise<Movie[]> => {
     
     if (firestoreMoviesData.length === 0) {
         // Fallback for demo purposes if IDs not in firestore
-        const allPlaceholderMovies = await getMovies();
+        const allPlaceholderMovies = await getMovies(true);
         const placeholderMap = new Map(allPlaceholderMovies.map(m => [m.id, m]));
         return ids.map(id => placeholderMap.get(id)).filter((m): m is Movie => !!m);
     }
@@ -501,14 +505,14 @@ export const getMoviesByIds = async (ids: string[]): Promise<Movie[]> => {
   } catch (error) {
     console.error("Error fetching movies by IDs from Firebase:", error);
     // Fallback to placeholder data for any matching IDs
-    const allPlaceholderMovies = await getMovies();
+    const allPlaceholderMovies = await getMovies(true);
     const placeholderMap = new Map(allPlaceholderMovies.map(m => [m.id, m]));
     return ids.map(id => placeholderMap.get(id)).filter((m): m is Movie => !!m);
   }
 };
 
 export const getMovieCategories = async (): Promise<string[]> => {
-  const movies = await getMovies();
+  const movies = await getMovies(true);
   if (!movies || movies.length === 0) return [];
   const categories = new Set(movies.flatMap(movie => movie.category || []));
   return Array.from(categories).sort();
@@ -520,7 +524,7 @@ export const getSimilarMovies = async (currentMovieId: string, categories: strin
   }
   
   try {
-    const allMovies = await getMovies();
+    const allMovies = await getMovies(true);
     const similar = allMovies
       .filter(movie => 
         movie.id !== currentMovieId && 
@@ -537,18 +541,21 @@ export const getSimilarMovies = async (currentMovieId: string, categories: strin
 
 // --- RADIOS ---
 
-const useRadioFallbackData = () => {
-  console.warn("Firebase no disponible o colección de radios vacía. Usando datos de demostración.");
-  return placeholderRadios;
+const useRadioFallbackData = (includePlaceholders: boolean) => {
+  if (includePlaceholders) {
+    console.warn("Firebase no disponible o colección de radios vacía. Usando datos de demostración.");
+    return placeholderRadios;
+  }
+  return [];
 };
 
-export const getRadios = async (): Promise<Radio[]> => {
+export const getRadios = async (includePlaceholders = false): Promise<Radio[]> => {
   try {
     const radiosCollection = collection(db, "radio");
     const radioSnapshot = await getDocs(query(radiosCollection));
     
-    if (radioSnapshot.empty) {
-      return useRadioFallbackData();
+    if (radioSnapshot.empty && includePlaceholders) {
+      return useRadioFallbackData(true);
     }
     
     // Concurrently resolve all stream URLs and filter out invalid ones
@@ -564,7 +571,7 @@ export const getRadios = async (): Promise<Radio[]> => {
     return radios;
   } catch (error) {
     console.error("Error al obtener radios de Firebase:", error);
-    return useRadioFallbackData();
+    return useRadioFallbackData(includePlaceholders);
   }
 };
 
@@ -588,7 +595,7 @@ export const getRadioById = async (id: string): Promise<Radio | null> => {
       return await processRadioData({ id: radioSnapshot.id, ...radioSnapshot.data() });
     }
     
-    const fallbackRadio = placeholderRadios.find(r => r.id === id);
+    const fallbackRadio = (await getRadios(true)).find(r => r.id === id);
     if (fallbackRadio) {
       console.warn(`Radio con id ${id} no encontrada en Firebase. Usando dato de demostración.`);
       return await processRadioData(fallbackRadio);
@@ -597,12 +604,81 @@ export const getRadioById = async (id: string): Promise<Radio | null> => {
     return null;
   } catch (error) {
     console.error(`Error al obtener radio con id ${id}:`, error);
-    const fallbackRadio = placeholderRadios.find(r => r.id === id);
+    const fallbackRadio = (await getRadios(true)).find(r => r.id === id);
     if (fallbackRadio) {
       return await processRadioData(fallbackRadio);
     }
     return null;
   }
+};
+
+
+// --- TOURNAMENTS ---
+
+const useTournamentFallbackData = (includePlaceholders: boolean) => {
+    if (includePlaceholders) {
+      console.warn("Firebase no disponible o colección de torneos vacía. Usando datos de demostración.");
+      return placeholderTournaments;
+    }
+    return [];
+};
+
+export const getTournaments = async (includePlaceholders = false): Promise<Tournament[]> => {
+    try {
+        const tournamentsCollection = collection(db, "tournaments");
+        const tournamentSnapshot = await getDocs(query(tournamentsCollection));
+        
+        if (tournamentSnapshot.empty && includePlaceholders) {
+            return useTournamentFallbackData(true);
+        }
+        
+        const tournaments = tournamentSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              tournamentId: data.id,
+              name: data.name,
+              logoUrl: data.logoUrl || [],
+            } as Tournament;
+        });
+        
+        return tournaments;
+    } catch (error) {
+        console.error("Error al obtener torneos de Firebase:", error);
+        return useTournamentFallbackData(includePlaceholders);
+    }
+};
+
+// --- TEAMS ---
+
+const useTeamFallbackData = (includePlaceholders: boolean) => {
+    if (includePlaceholders) {
+      console.warn("Firebase no disponible o colección de equipos vacía. Usando datos de demostración.");
+      return placeholderTeams;
+    }
+    return [];
+};
+
+export const getTeams = async (includePlaceholders = false): Promise<Team[]> => {
+    try {
+        const teamsQuery = query(collectionGroup(db, 'clubs'));
+        const teamSnapshot = await getDocs(teamsQuery);
+
+        if (teamSnapshot.empty && includePlaceholders) {
+            return useTeamFallbackData(true);
+        }
+        
+        const teams = teamSnapshot.docs.map(doc => ({
+          id: doc.id,
+          path: doc.ref.path,
+          ...doc.data()
+        } as Team));
+        
+        return teams;
+    } catch (error) {
+        console.error("Error al obtener equipos de Firebase:", error);
+        return useTeamFallbackData(includePlaceholders);
+    }
 };
 
     
