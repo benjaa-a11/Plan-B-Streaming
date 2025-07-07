@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { AdminAgendaMatch, Channel, Team, Tournament } from '@/types';
 import {
   Table,
@@ -36,8 +36,8 @@ import { Label } from '@/components/ui/label';
 import { useFormState, useFormStatus } from 'react-dom';
 import { addMatch, updateMatch, deleteMatch } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, Calendar as CalendarIcon } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { PlusCircle, Edit, Trash2, Loader2, Calendar as CalendarIcon, CheckCircle, AlertCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { format } from 'date-fns';
@@ -62,12 +62,12 @@ function SubmitButton({ isEditing }: { isEditing: boolean }) {
     )
 }
 
-function MatchForm({ match, onFormSubmit, teamOptions, tournamentOptions, channelOptions }: { 
+function MatchForm({ match, onFormSubmit, teams, tournamentOptions, channels }: { 
     match?: AdminAgendaMatch | null; 
     onFormSubmit: () => void;
-    teamOptions: Option[];
+    teams: Team[];
     tournamentOptions: Option[];
-    channelOptions: Option[];
+    channels: Channel[];
 }) {
   const formAction = match?.id ? updateMatch.bind(null, match.id) : addMatch;
   const [state, dispatch] = useFormState(formAction, initialState);
@@ -76,12 +76,51 @@ function MatchForm({ match, onFormSubmit, teamOptions, tournamentOptions, channe
 
   useEffect(() => {
     if(state.success) {
-        toast({ title: "Éxito", description: state.message });
+        toast({ 
+          title: (
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span className="font-semibold">Éxito</span>
+            </div>
+          ),
+          description: state.message 
+        });
         onFormSubmit();
     } else if (state.message && !Object.keys(state.errors ?? {}).length) {
-        toast({ variant: 'destructive', title: 'Error', description: state.message });
+        toast({ 
+          variant: 'destructive', 
+          title: (
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              <span className="font-semibold">Error</span>
+            </div>
+          ), 
+          description: state.message 
+        });
     }
   }, [state, onFormSubmit, toast]);
+
+  const groupedTeams = useMemo(() => {
+    return teams.reduce<Record<string, Option[]>>((acc, team) => {
+      const country = team.country || 'Sin País';
+      if (!acc[country]) {
+        acc[country] = [];
+      }
+      acc[country].push({ value: team.id, label: team.name });
+      return acc;
+    }, {});
+  }, [teams]);
+
+  const groupedChannels = useMemo(() => {
+    return channels.reduce<Record<string, Option[]>>((acc, channel) => {
+        const category = channel.category || 'Sin Categoría';
+        if (!acc[category]) {
+            acc[category] = [];
+        }
+        acc[category].push({ value: channel.id, label: channel.name });
+        return acc;
+    }, {});
+  }, [channels]);
 
   return (
     <form action={dispatch}>
@@ -91,7 +130,16 @@ function MatchForm({ match, onFormSubmit, teamOptions, tournamentOptions, channe
                 <Label htmlFor="team1">Equipo 1</Label>
                 <Select name="team1" defaultValue={match?.team1}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar equipo" /></SelectTrigger>
-                    <SelectContent><ScrollArea className="h-72">{teamOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</ScrollArea></SelectContent>
+                    <SelectContent>
+                        <ScrollArea className="h-72">
+                            {Object.entries(groupedTeams).map(([country, teamOptions]) => (
+                                <SelectGroup key={country}>
+                                    <SelectLabel>{country}</SelectLabel>
+                                    {teamOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                                </SelectGroup>
+                            ))}
+                        </ScrollArea>
+                    </SelectContent>
                 </Select>
                  {state.errors?.team1 && <p className="text-sm font-medium text-destructive">{state.errors.team1.join(', ')}</p>}
             </div>
@@ -99,7 +147,16 @@ function MatchForm({ match, onFormSubmit, teamOptions, tournamentOptions, channe
                 <Label htmlFor="team2">Equipo 2</Label>
                 <Select name="team2" defaultValue={match?.team2}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar equipo" /></SelectTrigger>
-                    <SelectContent><ScrollArea className="h-72">{teamOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</ScrollArea></SelectContent>
+                    <SelectContent>
+                       <ScrollArea className="h-72">
+                            {Object.entries(groupedTeams).map(([country, teamOptions]) => (
+                                <SelectGroup key={country}>
+                                    <SelectLabel>{country}</SelectLabel>
+                                    {teamOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                                </SelectGroup>
+                            ))}
+                        </ScrollArea>
+                    </SelectContent>
                 </Select>
                 {state.errors?.team2 && <p className="text-sm font-medium text-destructive">{state.errors.team2.join(', ')}</p>}
             </div>
@@ -140,7 +197,7 @@ function MatchForm({ match, onFormSubmit, teamOptions, tournamentOptions, channe
                 {state.errors?.date && <p className="text-sm font-medium text-destructive">{state.errors.date.join(', ')}</p>}
             </div>
             <div className='grid gap-2'>
-                <Label htmlFor="time">Hora (HH:mm)</Label>
+                <Label htmlFor="time">Hora (HH:mm - Arg)</Label>
                 <Input name="time" type="time" defaultValue={match?.time ? format(match.time, 'HH:mm') : ''}/>
                 {state.errors?.time && <p className="text-sm font-medium text-destructive">{state.errors.time.join(', ')}</p>}
             </div>
@@ -149,16 +206,21 @@ function MatchForm({ match, onFormSubmit, teamOptions, tournamentOptions, channe
         <div className="grid gap-2">
             <Label>Canales de Transmisión</Label>
             <ScrollArea className="h-40 rounded-md border p-4">
-                <div className='space-y-2'>
-                {channelOptions.map(c => (
-                    <div key={c.value} className="flex items-center gap-2">
-                        <Checkbox 
-                            id={`channel-${c.value}`} 
-                            name="channels" 
-                            value={c.value}
-                            defaultChecked={match?.channels?.includes(c.value)}
-                        />
-                        <Label htmlFor={`channel-${c.value}`}>{c.label}</Label>
+                <div className='space-y-4'>
+                {Object.entries(groupedChannels).map(([category, channelOptions]) => (
+                    <div key={category} className="space-y-2">
+                        <Label className="font-semibold">{category}</Label>
+                        {channelOptions.map(c => (
+                             <div key={c.value} className="flex items-center gap-2 pl-2">
+                                <Checkbox 
+                                    id={`channel-${c.value}`} 
+                                    name="channels" 
+                                    value={c.value}
+                                    defaultChecked={match?.channels?.includes(c.value)}
+                                />
+                                <Label htmlFor={`channel-${c.value}`} className="font-normal">{c.label}</Label>
+                            </div>
+                        ))}
                     </div>
                 ))}
                 </div>
@@ -182,12 +244,13 @@ function MatchForm({ match, onFormSubmit, teamOptions, tournamentOptions, channe
 
 type DataTableProps = {
     data: AdminAgendaMatch[];
-    teamOptions: Option[];
+    teams: Team[];
+    tournaments: Tournament[];
+    channels: Channel[];
     tournamentOptions: Option[];
-    channelOptions: Option[];
 }
 
-export default function AgendaDataTable({ data, teamOptions, tournamentOptions, channelOptions }: DataTableProps) {
+export default function AgendaDataTable({ data, teams, tournamentOptions, channels }: DataTableProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<AdminAgendaMatch | null>(null);
   const { toast } = useToast();
@@ -205,9 +268,26 @@ export default function AgendaDataTable({ data, teamOptions, tournamentOptions, 
   const handleDelete = async (id: string) => {
     const result = await deleteMatch(id);
     if(result.success) {
-      toast({ title: "Partido eliminado", description: result.message });
+      toast({ 
+        title: (
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-500" />
+            <span className="font-semibold">Eliminado</span>
+          </div>
+        ),
+        description: result.message 
+      });
     } else {
-      toast({ variant: "destructive", title: "Error", description: result.message });
+      toast({ 
+        variant: "destructive", 
+        title: (
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            <span className="font-semibold">Error</span>
+          </div>
+        ), 
+        description: result.message
+      });
     }
   }
 
@@ -226,20 +306,22 @@ export default function AgendaDataTable({ data, teamOptions, tournamentOptions, 
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedMatch ? 'Editar Partido' : 'Programar Nuevo Partido'}</DialogTitle>
             <DialogDescription>
               {selectedMatch ? 'Modifica los detalles del partido existente.' : 'Completa el formulario para añadir un nuevo partido a la agenda.'}
             </DialogDescription>
           </DialogHeader>
-          <MatchForm 
-            match={selectedMatch} 
-            onFormSubmit={handleFormSubmit}
-            teamOptions={teamOptions}
-            tournamentOptions={tournamentOptions}
-            channelOptions={channelOptions}
-          />
+          <div className="flex-grow overflow-y-auto pr-4">
+              <MatchForm 
+                match={selectedMatch} 
+                onFormSubmit={handleFormSubmit}
+                teams={teams}
+                tournamentOptions={tournamentOptions}
+                channels={channels}
+              />
+          </div>
         </DialogContent>
       </Dialog>
       

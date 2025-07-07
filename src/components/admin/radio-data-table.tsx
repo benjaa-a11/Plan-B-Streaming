@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useFormState, useFormStatus } from 'react-dom';
 import { addRadio, updateRadio, deleteRadio } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 
 const initialState = { message: '', errors: {}, success: false };
@@ -34,10 +35,31 @@ function RadioForm({ radio, onFormSubmit }: { radio?: Radio | null; onFormSubmit
 
   useEffect(() => {
     if(state.success) {
-        toast({ title: "Éxito", description: state.message });
+        toast({
+            title: (
+                <div className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold text-foreground">Éxito</p>
+                        <p className="text-sm text-muted-foreground mt-1">{state.message}</p>
+                    </div>
+                </div>
+            )
+        });
         onFormSubmit();
     } else if (state.message && !Object.keys(state.errors ?? {}).length) {
-        toast({ variant: 'destructive', title: 'Error', description: state.message });
+        toast({
+            variant: 'destructive',
+            title: (
+                <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-destructive-foreground mt-0.5 flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold text-destructive-foreground">Error</p>
+                        <p className="text-sm text-destructive-foreground/80 mt-1">{state.message}</p>
+                    </div>
+                </div>
+            )
+        });
     }
   }, [state, onFormSubmit, toast]);
 
@@ -93,9 +115,30 @@ export default function RadioDataTable({ data }: { data: Radio[] }) {
   const handleDelete = async (id: string) => {
     const result = await deleteRadio(id);
     if(result.success) {
-      toast({ title: "Radio eliminada", description: result.message });
+      toast({
+        title: (
+            <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                <div>
+                    <p className="font-semibold text-foreground">Radio Eliminada</p>
+                    <p className="text-sm text-muted-foreground mt-1">{result.message}</p>
+                </div>
+            </div>
+        )
+      });
     } else {
-      toast({ variant: "destructive", title: "Error", description: result.message });
+      toast({
+        variant: 'destructive',
+        title: (
+            <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-destructive-foreground mt-0.5 flex-shrink-0" />
+                <div>
+                    <p className="font-semibold text-destructive-foreground">Error</p>
+                    <p className="text-sm text-destructive-foreground/80 mt-1">{result.message}</p>
+                </div>
+            </div>
+        )
+      });
     }
   }
 
@@ -114,14 +157,16 @@ export default function RadioDataTable({ data }: { data: Radio[] }) {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[625px]">
+        <DialogContent className="sm:max-w-xl max-h-[90dvh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedRadio ? 'Editar Radio' : 'Añadir Nueva Radio'}</DialogTitle>
             <DialogDescription>
               {selectedRadio ? 'Modifica los detalles de la estación de radio existente.' : 'Completa el formulario para añadir una nueva estación de radio. El ID se generará a partir del nombre.'}
             </DialogDescription>
           </DialogHeader>
-          <RadioForm radio={selectedRadio} onFormSubmit={handleFormSubmit} />
+          <div className="flex-grow overflow-y-auto pr-4">
+            <RadioForm radio={selectedRadio} onFormSubmit={handleFormSubmit} />
+          </div>
         </DialogContent>
       </Dialog>
       

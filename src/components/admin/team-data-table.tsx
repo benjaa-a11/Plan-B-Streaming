@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -36,7 +37,7 @@ import { Label } from '@/components/ui/label';
 import { useFormState, useFormStatus } from 'react-dom';
 import { addTeam, updateTeam, deleteTeam } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 
 const initialState = { message: '', errors: {}, success: false };
@@ -59,10 +60,31 @@ function TeamForm({ team, onFormSubmit }: { team?: Team | null; onFormSubmit: ()
   useEffect(() => {
     if(state.message) {
         if (state.success) {
-            toast({ title: "Éxito", description: state.message });
+            toast({
+                title: (
+                    <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="font-semibold text-foreground">Éxito</p>
+                            <p className="text-sm text-muted-foreground mt-1">{state.message}</p>
+                        </div>
+                    </div>
+                )
+            });
             onFormSubmit();
         } else {
-            toast({ variant: 'destructive', title: 'Error', description: state.message });
+            toast({
+                variant: 'destructive',
+                title: (
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-destructive-foreground mt-0.5 flex-shrink-0" />
+                        <div>
+                            <p className="font-semibold text-destructive-foreground">Error</p>
+                            <p className="text-sm text-destructive-foreground/80 mt-1">{state.message}</p>
+                        </div>
+                    </div>
+                )
+            });
         }
     }
   }, [state, onFormSubmit, toast]);
@@ -116,9 +138,30 @@ export default function TeamDataTable({ data }: { data: Team[] }) {
   const handleDelete = async (path: string) => {
     const result = await deleteTeam(path);
     if(result.success) {
-      toast({ title: "Equipo eliminado", description: result.message });
+      toast({
+        title: (
+            <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                <div>
+                    <p className="font-semibold text-foreground">Equipo Eliminado</p>
+                    <p className="text-sm text-muted-foreground mt-1">{result.message}</p>
+                </div>
+            </div>
+        )
+      });
     } else {
-      toast({ variant: "destructive", title: "Error", description: result.message });
+      toast({
+        variant: 'destructive',
+        title: (
+            <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-destructive-foreground mt-0.5 flex-shrink-0" />
+                <div>
+                    <p className="font-semibold text-destructive-foreground">Error</p>
+                    <p className="text-sm text-destructive-foreground/80 mt-1">{result.message}</p>
+                </div>
+            </div>
+        )
+      });
     }
   }
 
@@ -137,14 +180,16 @@ export default function TeamDataTable({ data }: { data: Team[] }) {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[625px]">
+        <DialogContent className="sm:max-w-xl max-h-[90dvh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedTeam ? 'Editar Equipo' : 'Añadir Nuevo Equipo'}</DialogTitle>
             <DialogDescription>
               {selectedTeam ? 'Modifica los detalles del equipo existente.' : 'Completa el formulario para añadir un nuevo equipo. El ID se generará a partir del nombre y país.'}
             </DialogDescription>
           </DialogHeader>
-          <TeamForm team={selectedTeam} onFormSubmit={handleFormSubmit} />
+          <div className="flex-grow overflow-y-auto pr-4">
+            <TeamForm team={selectedTeam} onFormSubmit={handleFormSubmit} />
+          </div>
         </DialogContent>
       </Dialog>
       

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -36,7 +37,7 @@ import { Label } from '@/components/ui/label';
 import { useFormState, useFormStatus } from 'react-dom';
 import { addTournament, updateTournament, deleteTournament } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 
 const initialState = { message: '', errors: {}, success: false };
@@ -58,10 +59,31 @@ function TournamentForm({ tournament, onFormSubmit }: { tournament?: Tournament 
 
   useEffect(() => {
     if(state.success) {
-        toast({ title: "Éxito", description: state.message });
+        toast({
+            title: (
+                <div className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold text-foreground">Éxito</p>
+                        <p className="text-sm text-muted-foreground mt-1">{state.message}</p>
+                    </div>
+                </div>
+            )
+        });
         onFormSubmit();
     } else if (state.message && !Object.keys(state.errors ?? {}).length) {
-        toast({ variant: 'destructive', title: 'Error', description: state.message });
+        toast({
+            variant: 'destructive',
+            title: (
+                <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-destructive-foreground mt-0.5 flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold text-destructive-foreground">Error</p>
+                        <p className="text-sm text-destructive-foreground/80 mt-1">{state.message}</p>
+                    </div>
+                </div>
+            )
+        });
     }
   }, [state, onFormSubmit, toast]);
 
@@ -119,9 +141,30 @@ export default function TournamentDataTable({ data }: { data: Tournament[] }) {
   const handleDelete = async (id: string) => {
     const result = await deleteTournament(id);
     if(result.success) {
-      toast({ title: "Torneo eliminado", description: result.message });
+      toast({
+        title: (
+            <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                <div>
+                    <p className="font-semibold text-foreground">Torneo Eliminado</p>
+                    <p className="text-sm text-muted-foreground mt-1">{result.message}</p>
+                </div>
+            </div>
+        )
+      });
     } else {
-      toast({ variant: "destructive", title: "Error", description: result.message });
+      toast({
+        variant: 'destructive',
+        title: (
+            <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-destructive-foreground mt-0.5 flex-shrink-0" />
+                <div>
+                    <p className="font-semibold text-destructive-foreground">Error</p>
+                    <p className="text-sm text-destructive-foreground/80 mt-1">{result.message}</p>
+                </div>
+            </div>
+        )
+      });
     }
   }
 
@@ -140,14 +183,16 @@ export default function TournamentDataTable({ data }: { data: Tournament[] }) {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[625px]">
+        <DialogContent className="sm:max-w-xl max-h-[90dvh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedTournament ? 'Editar Torneo' : 'Añadir Nuevo Torneo'}</DialogTitle>
             <DialogDescription>
               {selectedTournament ? 'Modifica los detalles del torneo existente.' : 'Completa el formulario para añadir un nuevo torneo a la aplicación. El ID se generará a partir del nombre.'}
             </DialogDescription>
           </DialogHeader>
-          <TournamentForm tournament={selectedTournament} onFormSubmit={handleFormSubmit} />
+          <div className="flex-grow overflow-y-auto pr-4">
+            <TournamentForm tournament={selectedTournament} onFormSubmit={handleFormSubmit} />
+          </div>
         </DialogContent>
       </Dialog>
       
