@@ -7,28 +7,20 @@ const publicRoutes = ['/login'];
 
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  
-  // Determine if the current path is a protected route
   const isProtectedRoute = protectedRoutes.some((prefix) => path.startsWith(prefix));
+  const isPublicRoute = publicRoutes.some((prefix) => path.startsWith(prefix));
 
-  // If the route is not protected, continue without checks
-  if (!isProtectedRoute) {
-    return NextResponse.next();
-  }
-
-  // If it's a protected route, check for a valid session
   const sessionCookie = cookies().get('session')?.value;
   const session = await decrypt(sessionCookie);
-  
-  // If no valid session, redirect to the login page
-  if (!session) {
-    const loginUrl = new URL('/login', req.nextUrl.origin);
-    // Optionally preserve the originally requested URL as a query param
-    loginUrl.searchParams.set('from', path);
-    return NextResponse.redirect(loginUrl);
+
+  if (isProtectedRoute && !session) {
+    return NextResponse.redirect(new URL('/login', req.nextUrl.origin));
   }
 
-  // If session is valid, allow access
+  if (isPublicRoute && session) {
+    return NextResponse.redirect(new URL('/admin', req.nextUrl.origin));
+  }
+
   return NextResponse.next();
 }
 
