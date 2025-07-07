@@ -1,6 +1,9 @@
-import { ReactNode } from "react";
+
+'use client';
+
+import { ReactNode, useState } from "react";
 import Link from "next/link";
-import { Tv, Home, PanelLeft, LogOut } from "lucide-react";
+import { Home, PanelLeft, LogOut } from "lucide-react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import AdminSidebar from "@/components/admin/admin-sidebar";
@@ -12,6 +15,8 @@ import { logout } from "@/lib/auth-actions";
 // It ensures the admin panel is completely separate from the main app,
 // with its own styling, navigation, and structure.
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
   return (
     <html lang="es" suppressHydrationWarning>
       <body className="bg-muted/40">
@@ -25,7 +30,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <AdminSidebar className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex" />
             <div className="flex w-full flex-col sm:pl-14">
               <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
-                <Sheet>
+                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                   <SheetTrigger asChild>
                     <Button size="icon" variant="outline" className="sm:hidden">
                       <PanelLeft className="h-5 w-5" />
@@ -33,7 +38,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     </Button>
                   </SheetTrigger>
                   <SheetContent side="left" className="sm:max-w-xs p-0">
-                    <AdminSidebar isMobile={true} />
+                    <AdminSidebar isMobile={true} onLinkClick={() => setIsSheetOpen(false)} />
                   </SheetContent>
                 </Sheet>
                  <div className="flex-1">

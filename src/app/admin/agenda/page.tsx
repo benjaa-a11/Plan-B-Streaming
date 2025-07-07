@@ -14,11 +14,10 @@ export default async function AdminAgendaPage() {
     getChannels(true)
   ]);
 
-  const teamOptions = teams.map(t => ({ value: t.id, label: t.name }));
+  // Keep tournament options simple as they are not grouped
   const tournamentOptions = tournaments.map(t => ({ value: t.tournamentId, label: t.name }));
-  const channelOptions = channels.map(c => ({ value: c.id, label: c.name }));
 
-  // Create lookup maps for efficient data enrichment
+  // Create lookup maps for efficient data enrichment in the table
   const teamsMap = new Map(teams.map(t => [t.id, t.name]));
   const tournamentsMap = new Map(tournaments.map(t => [t.tournamentId, t.name]));
 
@@ -40,9 +39,10 @@ export default async function AdminAgendaPage() {
       </div>
       <AgendaDataTable 
         data={enrichedAgenda}
-        teamOptions={teamOptions}
+        teams={teams}
+        tournaments={tournaments}
+        channels={channels}
         tournamentOptions={tournamentOptions}
-        channelOptions={channelOptions}
       />
     </div>
   );

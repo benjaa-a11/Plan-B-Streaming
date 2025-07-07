@@ -298,7 +298,7 @@ const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP_BASE_URL = "https://image.tmdb.org/t/p/w1280";
 
 const _fetchTMDbData = cache(async (tmdbID: string) => {
-  if (!tmdbID || !TMDB_API_KEY) return null;
+  // The key is checked before this function is called, so we can assume it exists.
   try {
     const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}?api_key=${TMDB_API_KEY}&language=es-ES`);
     if (!response.ok) {
@@ -318,7 +318,7 @@ const _fetchTMDbData = cache(async (tmdbID: string) => {
 });
 
 const _fetchTMDbCredits = cache(async (tmdbID: string) => {
-  if (!tmdbID || !TMDB_API_KEY) return null;
+  // The key is checked before this function is called.
   try {
     const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}/credits?api_key=${TMDB_API_KEY}&language=es-ES`);
     if (!response.ok) {
@@ -333,7 +333,7 @@ const _fetchTMDbCredits = cache(async (tmdbID: string) => {
 });
 
 const _fetchTMDbVideos = cache(async (tmdbID: string) => {
-  if (!tmdbID || !TMDB_API_KEY) return null;
+  // The key is checked before this function is called.
   try {
     const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}/videos?api_key=${TMDB_API_KEY}&language=es-ES,en-US`);
     if (!response.ok) {
@@ -360,7 +360,7 @@ const _fetchTMDbVideos = cache(async (tmdbID: string) => {
 });
 
 
-const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Movie> => {
+const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Movie | null> => {
   const [tmdbMovieData, tmdbCreditsData, tmdbVideoUrl] = firestoreMovie.tmdbID
     ? await Promise.all([
         _fetchTMDbData(firestoreMovie.tmdbID),
@@ -368,11 +368,15 @@ const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Mov
         _fetchTMDbVideos(firestoreMovie.tmdbID),
       ])
     : [null, null, null];
-
-  // Logic to determine final values, prioritizing Firestore overrides
-  const title = firestoreMovie.title || tmdbMovieData?.title || 'Título no disponible';
   
-  // THIS IS THE FIX. Ensure posterUrl is never an empty string.
+  const title = firestoreMovie.title || tmdbMovieData?.title;
+  // If no title can be determined, the movie data is incomplete. Skip it.
+  if (!title) {
+    console.warn(`Skipping movie with docId ${docId} because a title could not be determined.`);
+    return null;
+  }
+
+  // Ensure posterUrl is never an empty string to prevent preload errors.
   const posterUrl = 
     firestoreMovie.posterUrl || 
     (tmdbMovieData?.poster_path ? `${TMDB_IMAGE_BASE_URL}${tmdbMovieData.poster_path}` : 'https://placehold.co/500x750.png');
@@ -415,7 +419,7 @@ const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Mov
 
 const useMovieFallbackData = (includePlaceholders: boolean) => {
   if (includePlaceholders) {
-    console.warn("Firebase no disponible o colección de películas vacía. Usando datos de demostración.");
+    console.warn("API de TMDb no configurada o colección de películas vacía. Usando datos de demostración.");
     return placeholderMovies;
   }
   return [];
@@ -423,6 +427,13 @@ const useMovieFallbackData = (includePlaceholders: boolean) => {
 
 // Uncached version of getMovies to ensure data is always fresh
 export const getMovies = async (includePlaceholders = false): Promise<Movie[]> => {
+  // Professional Check: If TMDb API key is missing, don't even try.
+  // Immediately fall back to placeholder data to avoid errors and ensure a stable UI.
+  if (!TMDB_API_KEY) {
+    console.error("CRITICAL: La variable de entorno TMDB_API_KEY no está configurada. La sección de películas no funcionará.");
+    return useMovieFallbackData(includePlaceholders);
+  }
+
   try {
     const moviesCollection = collection(db, "peliculas");
     const movieSnapshot = await getDocs(query(moviesCollection));
@@ -432,9 +443,11 @@ export const getMovies = async (includePlaceholders = false): Promise<Movie[]> =
     }
     
     const moviePromises = movieSnapshot.docs.map(doc => _enrichMovieData(doc.id, doc.data()));
-    const movies = await Promise.all(moviePromises);
+    const enrichedMovies = await Promise.all(moviePromises);
 
-    return movies;
+    // Filter out any movies that failed to enrich properly (e.g., returned null)
+    return enrichedMovies.filter((movie): movie is Movie => movie !== null);
+
   } catch (error) {
     console.error("Error al obtener películas de Firebase:", error);
     return useMovieFallbackData(includePlaceholders);
@@ -442,6 +455,10 @@ export const getMovies = async (includePlaceholders = false): Promise<Movie[]> =
 };
 
 export const getMovieById = async (id: string): Promise<Movie | null> => {
+  if (!TMDB_API_KEY) {
+    console.error("CRITICAL: La variable de entorno TMDB_API_KEY no está configurada.");
+    return null;
+  }
   try {
     const movieDoc = doc(db, "peliculas", id);
     const movieSnapshot = await getDoc(movieDoc);
@@ -470,6 +487,10 @@ export const getMoviesByIds = async (ids: string[]): Promise<Movie[]> => {
   if (!ids || ids.length === 0) {
     return [];
   }
+  if (!TMDB_API_KEY) {
+    console.error("CRITICAL: La variable de entorno TMDB_API_KEY no está configurada.");
+    return [];
+  }
 
   try {
     const chunks: string[][] = [];
@@ -494,9 +515,8 @@ export const getMoviesByIds = async (ids: string[]): Promise<Movie[]> => {
         return ids.map(id => placeholderMap.get(id)).filter((m): m is Movie => !!m);
     }
 
-    const enrichedMovies = await Promise.all(
-        firestoreMoviesData.map(movie => _enrichMovieData(movie.id, movie.data))
-    );
+    const enrichedMoviesPromises = firestoreMoviesData.map(movie => _enrichMovieData(movie.id, movie.data));
+    const enrichedMovies = (await Promise.all(enrichedMoviesPromises)).filter((m): m is Movie => !!m);
 
     // Preserve original order
     const movieMap = new Map(enrichedMovies.map(m => [m.id, m]));
