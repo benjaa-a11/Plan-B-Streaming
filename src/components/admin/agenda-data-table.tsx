@@ -1,49 +1,33 @@
+
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { AdminAgendaMatch, Channel, Team, Tournament } from '@/types';
+import Image from 'next/image';
+import { useFormState } from 'react-dom';
+import { addMatch, updateMatch, deleteMatch } from '@/lib/admin-actions';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useFormState, useFormStatus } from 'react-dom';
-import { addMatch, updateMatch, deleteMatch } from '@/lib/admin-actions';
-import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, Calendar as CalendarIcon, CheckCircle, AlertCircle } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '../ui/select';
+import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, ArrowLeft, Calendar as CalendarIcon, Clock, Shield, Users, Tv, FileText, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
 import { ScrollArea } from '../ui/scroll-area';
+import { Card, CardContent } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { Progress } from '../ui/progress';
 
 const initialState = { message: '', errors: {}, success: false };
 
@@ -52,205 +36,319 @@ type Option = {
     label: string;
 }
 
-function SubmitButton({ isEditing }: { isEditing: boolean }) {
-    const { pending } = useFormStatus();
-    return (
-        <Button type="submit" disabled={pending}>
-            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditing ? 'Guardar Cambios' : 'Añadir Partido'}
-        </Button>
-    )
-}
+type GroupedItems<T> = Record<string, T[]>;
 
-function MatchForm({ match, onFormSubmit, teams, tournamentOptions, channels }: { 
-    match?: AdminAgendaMatch | null; 
+const STEPS = [
+  { id: 1, name: 'Torneo', icon: Shield },
+  { id: 2, name: 'Equipo 1', icon: Users },
+  { id: 3, name: 'Equipo 2', icon: Users },
+  { id: 4, name: 'Fecha y Hora', icon: Clock },
+  { id: 5, name: 'Canales', icon: Tv },
+  { id: 6, name: 'Resumen', icon: FileText },
+];
+
+function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
+    match?: AdminAgendaMatch | null;
     onFormSubmit: () => void;
     teams: Team[];
-    tournamentOptions: Option[];
+    tournaments: Tournament[];
     channels: Channel[];
 }) {
-  const formAction = match?.id ? updateMatch.bind(null, match.id) : addMatch;
-  const [state, dispatch] = useFormState(formAction, initialState);
-  const [date, setDate] = useState<Date | undefined>(match?.time);
-  const { toast } = useToast();
+    const [step, setStep] = useState(1);
+    const [formData, setFormData] = useState({
+        tournamentId: match?.tournamentId || '',
+        team1: match?.team1 || '',
+        team2: match?.team2 || '',
+        date: match?.time,
+        time: match?.time ? format(match.time, 'HH:mm') : '',
+        channels: match?.channels || [],
+        dates: match?.dates || '',
+    });
 
-  useEffect(() => {
-    if(state.success) {
-        toast({ 
-          title: (
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="font-semibold">Éxito</span>
-            </div>
-          ),
-          description: state.message 
-        });
-        onFormSubmit();
-    } else if (state.message && !Object.keys(state.errors ?? {}).length) {
-        toast({ 
-          variant: 'destructive', 
-          title: (
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" />
-              <span className="font-semibold">Error</span>
-            </div>
-          ), 
-          description: state.message 
-        });
-    }
-  }, [state, onFormSubmit, toast]);
+    const [selectedCountry, setSelectedCountry] = useState<string | null>(teams.find(t => t.id === formData.team1)?.country || null);
+    const [selectedChannelCategory, setSelectedChannelCategory] = useState<string | null>(null);
 
-  const groupedTeams = useMemo(() => {
-    return teams.reduce<Record<string, Option[]>>((acc, team) => {
-      const country = team.country || 'Sin País';
-      if (!acc[country]) {
-        acc[country] = [];
-      }
-      acc[country].push({ value: team.id, label: team.name });
-      return acc;
-    }, {});
-  }, [teams]);
+    const formAction = match?.id ? updateMatch.bind(null, match.id) : addMatch;
+    const [state, dispatch] = useFormState(formAction, initialState);
+    const { toast } = useToast();
 
-  const groupedChannels = useMemo(() => {
-    return channels.reduce<Record<string, Option[]>>((acc, channel) => {
-        const category = channel.category || 'Sin Categoría';
-        if (!acc[category]) {
-            acc[category] = [];
+    useEffect(() => {
+        if (state.success) {
+            toast({
+                title: <div className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /><span>Éxito</span></div>,
+                description: state.message
+            });
+            onFormSubmit();
+        } else if (state.message) {
+            toast({
+                variant: 'destructive',
+                title: <div className="flex items-center gap-2"><AlertCircle className="h-5 w-5" /><span>Error</span></div>,
+                description: state.message
+            });
         }
-        acc[category].push({ value: channel.id, label: channel.name });
+    }, [state, onFormSubmit, toast]);
+    
+    const groupedTeams = useMemo(() => teams.reduce<GroupedItems<Team>>((acc, team) => {
+        const country = team.country || 'Sin País';
+        if (!acc[country]) acc[country] = [];
+        acc[country].push(team);
         return acc;
-    }, {});
-  }, [channels]);
+    }, {}), [teams]);
 
-  return (
-    <form action={dispatch}>
-      <div className="grid gap-6 py-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-                <Label htmlFor="team1">Equipo 1</Label>
-                <Select name="team1" defaultValue={match?.team1}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar equipo" /></SelectTrigger>
-                    <SelectContent>
-                        <ScrollArea className="h-72">
-                            {Object.entries(groupedTeams).map(([country, teamOptions]) => (
-                                <SelectGroup key={country}>
-                                    <SelectLabel>{country}</SelectLabel>
-                                    {teamOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                                </SelectGroup>
-                            ))}
-                        </ScrollArea>
-                    </SelectContent>
-                </Select>
-                 {state.errors?.team1 && <p className="text-sm font-medium text-destructive">{state.errors.team1.join(', ')}</p>}
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="team2">Equipo 2</Label>
-                <Select name="team2" defaultValue={match?.team2}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar equipo" /></SelectTrigger>
-                    <SelectContent>
-                       <ScrollArea className="h-72">
-                            {Object.entries(groupedTeams).map(([country, teamOptions]) => (
-                                <SelectGroup key={country}>
-                                    <SelectLabel>{country}</SelectLabel>
-                                    {teamOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                                </SelectGroup>
-                            ))}
-                        </ScrollArea>
-                    </SelectContent>
-                </Select>
-                {state.errors?.team2 && <p className="text-sm font-medium text-destructive">{state.errors.team2.join(', ')}</p>}
-            </div>
-        </div>
+    const groupedChannels = useMemo(() => channels.reduce<GroupedItems<Channel>>((acc, channel) => {
+        const category = channel.category || 'Sin Categoría';
+        if (!acc[category]) acc[category] = [];
+        acc[category].push(channel);
+        return acc;
+    }, {}), [channels]);
 
-        <div className="grid gap-2">
-            <Label htmlFor="tournamentId">Torneo</Label>
-            <Select name="tournamentId" defaultValue={match?.tournamentId}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar torneo" /></SelectTrigger>
-                <SelectContent><ScrollArea className="h-72">{tournamentOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</ScrollArea></SelectContent>
-            </Select>
-            {state.errors?.tournamentId && <p className="text-sm font-medium text-destructive">{state.errors.tournamentId.join(', ')}</p>}
-        </div>
-        
-        <div className='grid grid-cols-2 gap-4'>
-            <div className="grid gap-2">
-                <Label htmlFor="date">Fecha</Label>
-                <Popover>
-                    <PopoverTrigger asChild>
-                    <Button
-                        variant={"outline"}
-                        className={cn("justify-start text-left font-normal", !date && "text-muted-foreground")}
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : <span>Elegir fecha</span>}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                    <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                    />
-                    </PopoverContent>
-                </Popover>
-                <input type="hidden" name="date" value={date ? date.toISOString().split('T')[0] : ''} />
-                {state.errors?.date && <p className="text-sm font-medium text-destructive">{state.errors.date.join(', ')}</p>}
-            </div>
-            <div className='grid gap-2'>
-                <Label htmlFor="time">Hora (HH:mm - Arg)</Label>
-                <Input name="time" type="time" defaultValue={match?.time ? format(match.time, 'HH:mm') : ''}/>
-                {state.errors?.time && <p className="text-sm font-medium text-destructive">{state.errors.time.join(', ')}</p>}
-            </div>
-        </div>
+    const handleNextStep = () => setStep(prev => Math.min(prev + 1, STEPS.length));
+    const handlePrevStep = () => setStep(prev => Math.max(prev - 1, 1));
 
-        <div className="grid gap-2">
-            <Label>Canales de Transmisión</Label>
-            <ScrollArea className="h-40 rounded-md border p-4">
-                <div className='space-y-4'>
-                {Object.entries(groupedChannels).map(([category, channelOptions]) => (
-                    <div key={category} className="space-y-2">
-                        <Label className="font-semibold">{category}</Label>
-                        {channelOptions.map(c => (
-                             <div key={c.value} className="flex items-center gap-2 pl-2">
-                                <Checkbox 
-                                    id={`channel-${c.value}`} 
-                                    name="channels" 
-                                    value={c.value}
-                                    defaultChecked={match?.channels?.includes(c.value)}
-                                />
-                                <Label htmlFor={`channel-${c.value}`} className="font-normal">{c.label}</Label>
-                            </div>
+    const handleSelect = (field: keyof typeof formData, value: any) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleChannelToggle = (channelId: string) => {
+        setFormData(prev => {
+            const newChannels = prev.channels.includes(channelId)
+                ? prev.channels.filter(id => id !== channelId)
+                : [...prev.channels, channelId];
+            return { ...prev, channels: newChannels };
+        });
+    };
+
+    const renderStepContent = () => {
+      switch(step) {
+        case 1: // Tournament Selection
+            return (
+                <ScrollArea className="flex-auto">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-1">
+                        {tournaments.map(t => (
+                            <Card
+                                key={t.id}
+                                onClick={() => { handleSelect('tournamentId', t.tournamentId); handleNextStep(); }}
+                                className={cn(
+                                    "cursor-pointer transition-all duration-200 hover:shadow-primary/20 hover:-translate-y-1",
+                                    formData.tournamentId === t.tournamentId && "ring-2 ring-primary"
+                                )}
+                            >
+                                <CardContent className="flex flex-col items-center justify-center p-4 gap-2 text-center aspect-square">
+                                    <Image unoptimized src={t.logoUrl?.[0] || 'https://placehold.co/128x128.png'} alt={t.name} width={64} height={64} className="h-16 w-16 object-contain" />
+                                    <p className="text-xs font-semibold">{t.name}</p>
+                                </CardContent>
+                            </Card>
                         ))}
                     </div>
-                ))}
-                </div>
-            </ScrollArea>
-        </div>
+                </ScrollArea>
+            );
 
-        <div className="grid gap-2">
-            <Label htmlFor="dates">Texto Adicional (Ej: Jornada, Grupo)</Label>
-            <Input name="dates" defaultValue={match?.dates} />
+        case 2: // Team 1 Selection
+        case 3: // Team 2 Selection
+            const currentTeamField = step === 2 ? 'team1' : 'team2';
+            const currentTeam = formData[currentTeamField];
+            
+            return (
+                <div className="flex flex-col md:flex-row gap-4 flex-auto min-h-0">
+                    <div className="md:w-1/3 border-r pr-4">
+                        <h3 className="font-semibold mb-2">País</h3>
+                        <ScrollArea>
+                            <div className="space-y-1">
+                                {Object.keys(groupedTeams).sort().map(country => (
+                                    <Button key={country} variant={selectedCountry === country ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setSelectedCountry(country)}>
+                                        {country}
+                                    </Button>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                    <ScrollArea className="md:w-2/3">
+                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 p-1">
+                            {selectedCountry && groupedTeams[selectedCountry]?.map(team => (
+                                <Card
+                                    key={team.id}
+                                    onClick={() => {
+                                        if (formData.team1 !== team.id) { // Prevent selecting same team twice
+                                            handleSelect(currentTeamField, team.id);
+                                            handleNextStep();
+                                        }
+                                    }}
+                                    className={cn(
+                                        "cursor-pointer transition-all duration-200 hover:shadow-primary/20 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed",
+                                        currentTeam === team.id && "ring-2 ring-primary",
+                                        formData.team1 === team.id && currentTeamField === 'team2' && "opacity-50 cursor-not-allowed"
+                                    )}
+                                    title={team.name}
+                                    aria-disabled={formData.team1 === team.id && currentTeamField === 'team2'}
+                                >
+                                    <CardContent className="flex flex-col items-center justify-center p-2 sm:p-4 gap-2 text-center aspect-square">
+                                        <Image unoptimized src={team.logoUrl} alt={team.name} width={48} height={48} className="h-10 w-10 sm:h-12 sm:w-12 object-contain" />
+                                        <p className="text-[10px] sm:text-xs font-semibold leading-tight">{team.name}</p>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                </div>
+            );
+        
+        case 4: // Date and Time
+          return (
+              <div className="flex-auto p-4 space-y-6">
+                  <div className="grid sm:grid-cols-2 gap-6">
+                      <div>
+                          <Label>Fecha del Partido</Label>
+                          <Calendar
+                              mode="single"
+                              selected={formData.date}
+                              onSelect={(date) => handleSelect('date', date)}
+                              className="rounded-md border mt-1"
+                              initialFocus
+                          />
+                      </div>
+                      <div>
+                          <Label htmlFor="time">Hora del Partido (Formato 24hs - AR)</Label>
+                          <Input id="time" name="time" type="time" value={formData.time} onChange={(e) => handleSelect('time', e.target.value)} className="mt-1" />
+                      </div>
+                  </div>
+              </div>
+          );
+
+        case 5: // Channel Selection
+            return (
+                <div className="flex flex-col md:flex-row gap-4 flex-auto min-h-0">
+                    <div className="md:w-1/3 border-r pr-4">
+                        <h3 className="font-semibold mb-2">Categoría</h3>
+                        <ScrollArea>
+                            <div className="space-y-1">
+                                {Object.keys(groupedChannels).sort().map(cat => (
+                                    <Button key={cat} variant={selectedChannelCategory === cat ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setSelectedChannelCategory(cat)}>
+                                        {cat}
+                                    </Button>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                    <ScrollArea className="md:w-2/3 p-1">
+                        <div className="space-y-2">
+                          {selectedChannelCategory && groupedChannels[selectedChannelCategory]?.map(channel => (
+                            <div key={channel.id} onClick={() => handleChannelToggle(channel.id)} className="flex items-center gap-3 p-2 rounded-md cursor-pointer hover:bg-muted transition-colors">
+                              <Checkbox checked={formData.channels.includes(channel.id)} onCheckedChange={() => handleChannelToggle(channel.id)} />
+                              <Image unoptimized src={channel.logoUrl} alt={channel.name} width={32} height={32} className="h-8 w-8 object-contain" />
+                              <Label className="font-medium cursor-pointer">{channel.name}</Label>
+                            </div>
+                          ))}
+                        </div>
+                    </ScrollArea>
+                </div>
+            );
+
+        case 6: // Summary
+            const t1 = teams.find(t => t.id === formData.team1);
+            const t2 = teams.find(t => t.id === formData.team2);
+            const tourney = tournaments.find(t => t.tournamentId === formData.tournamentId);
+            const selectedChannels = channels.filter(c => formData.channels.includes(c.id));
+            
+            return (
+                <form action={dispatch} className="flex-auto overflow-y-auto p-4 space-y-4">
+                     {/* Hidden inputs to submit data */}
+                    <input type="hidden" name="tournamentId" value={formData.tournamentId} />
+                    <input type="hidden" name="team1" value={formData.team1} />
+                    <input type="hidden" name="team2" value={formData.team2} />
+                    <input type="hidden" name="date" value={formData.date ? formData.date.toISOString().split('T')[0] : ''} />
+                    <input type="hidden" name="time" value={formData.time} />
+                    {formData.channels.map(cId => <input key={cId} type="hidden" name="channels" value={cId} />)}
+                    
+                    <h3 className="font-bold text-lg text-center">Resumen del Partido</h3>
+                    <Card>
+                        <CardContent className="p-4 space-y-4">
+                            <div className="flex justify-around items-center text-center">
+                                <div className="w-1/3 space-y-2">
+                                    <Image unoptimized src={t1?.logoUrl || 'https://placehold.co/64x64.png'} alt={t1?.name || ''} width={48} height={48} className="mx-auto h-12 w-12 object-contain" />
+                                    <p className="font-semibold text-sm">{t1?.name}</p>
+                                </div>
+                                <p className="font-bold text-muted-foreground">VS</p>
+                                <div className="w-1/3 space-y-2">
+                                    <Image unoptimized src={t2?.logoUrl || 'https://placehold.co/64x64.png'} alt={t2?.name || ''} width={48} height={48} className="mx-auto h-12 w-12 object-contain" />
+                                    <p className="font-semibold text-sm">{t2?.name}</p>
+                                </div>
+                            </div>
+                            <div className="text-center space-y-1 pt-2 border-t">
+                                <Image unoptimized src={tourney?.logoUrl?.[0] || 'https://placehold.co/40x40.png'} alt={tourney?.name || ''} width={32} height={32} className="mx-auto h-8 w-8 object-contain" />
+                                <p className="text-sm font-medium">{tourney?.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {formData.date ? format(formData.date, 'PPP', {}) : 'Sin fecha'} a las {formData.time || '00:00'} hs
+                                </p>
+                            </div>
+                            <div className="pt-2 border-t">
+                                <h4 className="font-semibold text-sm mb-2">Canales de Transmisión</h4>
+                                {selectedChannels.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedChannels.map(c => <Badge key={c.id} variant="secondary">{c.name}</Badge>)}
+                                    </div>
+                                ) : <p className="text-sm text-muted-foreground">Ninguno seleccionado</p>}
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <div>
+                        <Label htmlFor="dates">Texto Adicional (Ej: Jornada, Grupo)</Label>
+                        <Input id="dates" name="dates" value={formData.dates} onChange={(e) => handleSelect('dates', e.target.value)} />
+                    </div>
+                </form>
+            );
+        }
+    };
+    
+    const isNextDisabled = () => {
+        switch(step) {
+            case 1: return !formData.tournamentId;
+            case 2: return !formData.team1;
+            case 3: return !formData.team2;
+            case 4: return !formData.date || !formData.time;
+            case 5: return false; // Can proceed without channels
+            default: return false;
+        }
+    }
+
+    return (
+        <div className="flex flex-col h-full">
+            <div className="p-4 border-b">
+                <Progress value={(step / STEPS.length) * 100} className="w-full mb-2" />
+                <div className="flex justify-between items-center">
+                    <div>
+                        <p className="text-sm text-muted-foreground">Paso {step} de {STEPS.length}</p>
+                        <p className="font-semibold">{STEPS[step - 1].name}</p>
+                    </div>
+                    {step > 1 && (
+                      <Button variant="ghost" size="sm" onClick={handlePrevStep}><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button>
+                    )}
+                </div>
+            </div>
+            
+            <div className="flex-grow p-4 min-h-0 flex flex-col">
+              {renderStepContent()}
+            </div>
+            
+            <div className="p-4 border-t flex justify-end gap-2">
+                {step < STEPS.length ? (
+                    <Button onClick={handleNextStep} disabled={isNextDisabled()}>Siguiente</Button>
+                ) : (
+                    <Button type="submit" formAction={formAction} disabled={!formData.team1 || !formData.team2 || !formData.tournamentId || !formData.date || !formData.time}>
+                        {match ? 'Guardar Cambios' : 'Crear Partido'}
+                    </Button>
+                )}
+            </div>
         </div>
-      </div>
-      <DialogFooter>
-        <DialogClose asChild>
-            <Button type="button" variant="outline">Cancelar</Button>
-        </DialogClose>
-        <SubmitButton isEditing={!!match} />
-      </DialogFooter>
-    </form>
-  );
+    );
 }
 
-type DataTableProps = {
+export default function AgendaDataTable({ data, teams, tournaments, channels }: {
     data: AdminAgendaMatch[];
     teams: Team[];
     tournaments: Tournament[];
     channels: Channel[];
-    tournamentOptions: Option[];
-}
-
-export default function AgendaDataTable({ data, teams, tournamentOptions, channels }: DataTableProps) {
+    tournamentOptions: Option[]; // Keep for potential future use or remove if fully deprecated
+}) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<AdminAgendaMatch | null>(null);
   const { toast } = useToast();
@@ -269,32 +367,22 @@ export default function AgendaDataTable({ data, teams, tournamentOptions, channe
     const result = await deleteMatch(id);
     if(result.success) {
       toast({ 
-        title: (
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            <span className="font-semibold">Eliminado</span>
-          </div>
-        ),
+        title: <div className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /><span>Eliminado</span></div>,
         description: result.message 
       });
     } else {
       toast({ 
         variant: "destructive", 
-        title: (
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
-            <span className="font-semibold">Error</span>
-          </div>
-        ), 
+        title: <div className="flex items-center gap-2"><AlertCircle className="h-5 w-5" /><span>Error</span></div>, 
         description: result.message
       });
     }
   }
 
-  const handleFormSubmit = () => {
+  const handleFormSubmit = useCallback(() => {
     setIsDialogOpen(false);
     setSelectedMatch(null);
-  };
+  }, []);
 
   return (
     <div>
@@ -306,19 +394,19 @@ export default function AgendaDataTable({ data, teams, tournamentOptions, channe
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-4 border-b">
             <DialogTitle>{selectedMatch ? 'Editar Partido' : 'Programar Nuevo Partido'}</DialogTitle>
             <DialogDescription>
-              {selectedMatch ? 'Modifica los detalles del partido existente.' : 'Completa el formulario para añadir un nuevo partido a la agenda.'}
+              {selectedMatch ? 'Modifica los detalles del partido existente.' : 'Usa el asistente para programar un nuevo partido.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-grow overflow-y-auto pr-4">
-              <MatchForm 
+          <div className="flex-grow min-h-0">
+              <MatchWizard 
                 match={selectedMatch} 
                 onFormSubmit={handleFormSubmit}
                 teams={teams}
-                tournamentOptions={tournamentOptions}
+                tournaments={tournaments}
                 channels={channels}
               />
           </div>
@@ -383,3 +471,4 @@ export default function AgendaDataTable({ data, teams, tournamentOptions, channe
     </div>
   );
 }
+
