@@ -54,10 +54,11 @@ const _resolvePlsUrl = async (url: string): Promise<string | null> => {
 // Helper function to use placeholder data as a fallback
 const useFallbackData = () => {
   console.warn("Firebase no disponible o colección vacía. Usando datos de demostración.");
-  return placeholderChannels;
+  // Filter hidden channels from the fallback data
+  return placeholderChannels.filter(c => !c.isHidden);
 };
 
-// Uncached version of getChannels to ensure data is always fresh
+// Uncached version of getChannels to ensure data is always fresh for the public app
 export const getChannels = async (includePlaceholders = false): Promise<Channel[]> => {
   try {
     const channelsCollection = collection(db, "channels");
@@ -67,18 +68,41 @@ export const getChannels = async (includePlaceholders = false): Promise<Channel[
       return useFallbackData();
     }
     
-    const channels = channelSnapshot.docs.map(doc => ({
+    const allChannels = channelSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as Channel));
     
-    return channels;
+    // Server-side filter to ensure channels are visible unless explicitly hidden.
+    // This shows channels where `isHidden` is `false` or the field does not exist.
+    const visibleChannels = allChannels.filter(channel => channel.isHidden !== true);
+    
+    return visibleChannels;
   } catch (error) {
     console.error("Error al obtener canales de Firebase:", error);
     if (includePlaceholders) return useFallbackData();
     return [];
   }
 };
+
+// This version is for the admin panel and fetches ALL channels, including hidden ones.
+export const getAllChannelsForAdmin = async (includePlaceholders = false): Promise<Channel[]> => {
+  try {
+    const channelsCollection = collection(db, "channels");
+    const channelSnapshot = await getDocs(query(channelsCollection));
+    
+    if (channelSnapshot.empty && includePlaceholders) {
+      return placeholderChannels; // Return all, including hidden
+    }
+    
+    return channelSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Channel));
+  } catch (error) {
+    console.error("Error fetching all channels for admin:", error);
+    if (includePlaceholders) return placeholderChannels;
+    return [];
+  }
+};
+
 
 export const getChannelById = async (id: string): Promise<Channel | null> => {
   try {
@@ -89,7 +113,7 @@ export const getChannelById = async (id: string): Promise<Channel | null> => {
       return { id: channelSnapshot.id, ...channelSnapshot.data() } as Channel;
     } else {
        // Fallback for demo purposes if ID not in firestore
-      const fallbackChannel = (await getChannels(true)).find(c => c.id === id);
+      const fallbackChannel = (await getAllChannelsForAdmin(true)).find(c => c.id === id);
       if (fallbackChannel) {
         console.warn(`Canal con id ${id} no encontrado en Firebase. Usando dato de demostración.`);
         return fallbackChannel;
@@ -98,7 +122,7 @@ export const getChannelById = async (id: string): Promise<Channel | null> => {
     }
   } catch (error) {
     console.error(`Error al obtener canal con id ${id}:`, error);
-     const fallbackChannel = (await getChannels(true)).find(c => c.id === id);
+     const fallbackChannel = (await getAllChannelsForAdmin(true)).find(c => c.id === id);
       if (fallbackChannel) {
         return fallbackChannel;
       }
@@ -134,7 +158,7 @@ export const getChannelsByIds = async (ids: string[]): Promise<Channel[]> => {
   } catch (error) {
     console.error("Error fetching channels by IDs from Firebase:", error);
     // Fallback to placeholder data for any matching IDs
-    const allPlaceholderChannels = await getChannels(true);
+    const allPlaceholderChannels = await getAllChannelsForAdmin(true);
     const placeholderMap = new Map(allPlaceholderChannels.map(c => [c.id, c]));
     return ids.map(id => placeholderMap.get(id)).filter((c): c is Channel => !!c);
   }
@@ -147,7 +171,7 @@ export const getCategories = async (): Promise<string[]> => {
 };
 
 export const getChannelsByCategory = async (category: string, excludeId?: string): Promise<Channel[]> => {
-  const allChannels = await getChannels(true);
+  const allChannels = await getChannels(true); // Gets only visible channels
   return allChannels.filter(channel => {
     const isSameCategory = channel.category === category;
     const isNotExcluded = excludeId ? channel.id !== excludeId : true;

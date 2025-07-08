@@ -41,6 +41,7 @@ const ChannelSchema = z.object({
   category: z.string().min(1, { message: 'La categoría es requerida.' }),
   description: z.string().optional(),
   streamUrl: z.array(z.string().url({ message: 'Cada URL de stream debe ser válida.' })).min(1, { message: 'Se requiere al menos una URL de stream.' }),
+  isHidden: z.boolean().optional(),
 });
 
 export async function addChannel(prevState: FormState, formData: FormData): Promise<FormState> {
@@ -48,6 +49,7 @@ export async function addChannel(prevState: FormState, formData: FormData): Prom
   const processedData = {
     ...rawData,
     streamUrl: (rawData.streamUrl as string).split(',').map(url => url.trim()).filter(Boolean),
+    isHidden: rawData.isHidden === 'on',
   };
 
   const validatedFields = ChannelSchema.safeParse(processedData);
@@ -87,6 +89,7 @@ export async function updateChannel(id: string, prevState: FormState, formData: 
   const processedData = {
     ...rawData,
     streamUrl: (rawData.streamUrl as string).split(',').map(url => url.trim()).filter(Boolean),
+    isHidden: rawData.isHidden === 'on',
   };
 
   const validatedFields = ChannelSchema.safeParse(processedData);
