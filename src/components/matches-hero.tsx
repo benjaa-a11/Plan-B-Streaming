@@ -1,4 +1,3 @@
-
 "use client";
 import type { Match } from "@/types";
 import Image from "next/image";
@@ -40,7 +39,6 @@ const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
     useEffect(() => {
         setMounted(true);
     }, []);
-
 
     const renderButton = () => {
         if (!match.isWatchable) {
@@ -169,62 +167,55 @@ const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
         if (typeof match.tournamentLogo === 'string') {
             return match.tournamentLogo;
         }
-
-        // To prevent hydration mismatch, default to a specific theme on server/initial render
-        // and only switch on the client after mounting.
         if (!mounted) {
-            return match.tournamentLogo.light; // Default to light theme logo
+            return match.tournamentLogo.light;
         }
-        
         return resolvedTheme === 'dark' ? match.tournamentLogo.dark : match.tournamentLogo.light;
     };
     
     const tournamentLogoUrl = getTournamentLogo();
 
     return (
-        <Card className="w-[340px] sm:w-[380px] overflow-hidden shadow-lg flex-shrink-0 opacity-0 animate-fade-in-up">
-            <CardContent className="p-6 flex flex-col items-center justify-center">
-                <div className="flex items-center justify-between w-full">
-                    <div className="flex flex-col items-center gap-2 text-center w-[100px]">
-                        <Image unoptimized src={match.team1Logo || ''} alt={match.team1} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
-                        <h3 className="font-semibold truncate w-full">{match.team1}</h3>
-                    </div>
-
-                    <div className="h-12 w-12 flex-shrink-0 flex items-center justify-center font-bold text-sm text-muted-foreground text-center">
-                       {tournamentLogoUrl ? (
-                            <Image unoptimized src={tournamentLogoUrl} alt={match.tournamentName || 'Tournament'} width={48} height={48} sizes="48px" className="h-12 w-12 object-contain" data-ai-hint="tournament logo" />
-                       ) : (
-                           <span className="text-center">{match.tournamentName}</span>
-                       )}
-                    </div>
-
-                    <div className="flex flex-col items-center gap-2 text-center w-[100px]">
-                        <Image unoptimized src={match.team2Logo || ''} alt={match.team2} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
-                        <h3 className="font-semibold truncate w-full">{match.team2}</h3>
+        <Card className="w-[340px] sm:w-[380px] overflow-hidden shadow-lg flex-shrink-0 opacity-0 animate-fade-in-up flex flex-col">
+            <div className="p-3 bg-muted/40 border-b flex justify-between items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                    {tournamentLogoUrl && (
+                        <Image unoptimized src={tournamentLogoUrl} alt={match.tournamentName || 'Tournament'} width={24} height={24} sizes="24px" className="h-6 w-6 object-contain flex-shrink-0" data-ai-hint="tournament logo" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-xs truncate">{match.tournamentName}</p>
+                        {match.dates && (
+                            <p className="text-xs text-muted-foreground truncate">{match.dates}</p>
+                        )}
                     </div>
                 </div>
-
-                {match.dates && (
-                    <p className="text-xs text-muted-foreground mt-4 text-center">
-                        {match.dates}
-                    </p>
-                )}
-                
                 {match.isLive ? (
-                    <div className={cn("flex items-center gap-2 font-bold", match.dates ? "mt-2" : "mt-4")}>
-                      <Badge variant="destructive" className="animate-pulse text-sm font-bold px-3 py-1">EN VIVO</Badge>
-                    </div>
-                  ) : (
-                    <div className={cn(
-                        "flex items-center gap-2 text-primary text-lg font-bold",
-                        match.dates ? "mt-2" : "mt-4"
-                    )}>
-                        <Clock className="h-5 w-5" />
+                    <Badge variant="destructive" className="animate-pulse text-xs font-bold px-2 py-0.5">EN VIVO</Badge>
+                ) : (
+                    <div className="flex items-center gap-1.5 text-primary text-sm font-bold flex-shrink-0">
+                        <Clock className="h-4 w-4" />
                         <span>{match.time} hs</span>
                     </div>
                 )}
+            </div>
+            
+            <CardContent className="p-6 flex-grow flex flex-col items-center justify-center">
+                <div className="flex items-center justify-around w-full gap-4">
+                    <div className="flex flex-col items-center gap-2 text-center flex-1">
+                        <Image unoptimized src={match.team1Logo || 'https://placehold.co/128x128.png'} alt={match.team1} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
+                        <h3 className="font-semibold text-base text-center">{match.team1}</h3>
+                    </div>
+                    
+                    <div className="text-muted-foreground font-bold text-lg">VS</div>
+                    
+                    <div className="flex flex-col items-center gap-2 text-center flex-1">
+                        <Image unoptimized src={match.team2Logo || 'https://placehold.co/128x128.png'} alt={match.team2} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
+                        <h3 className="font-semibold text-base text-center">{match.team2}</h3>
+                    </div>
+                </div>
             </CardContent>
-            <CardFooter className="bg-muted/40 px-6 py-4">
+
+            <CardFooter className="bg-muted/40 px-6 py-4 mt-auto">
                 {renderButton()}
             </CardFooter>
         </Card>

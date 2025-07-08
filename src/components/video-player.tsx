@@ -203,6 +203,7 @@ export default function VideoPlayer({ src, posterUrl, backdropUrl }: VideoPlayer
       {isLoading && backgroundImageUrl && !error && (
         <div className="absolute inset-0 z-0">
           <Image 
+            unoptimized
             src={backgroundImageUrl} 
             alt="Movie backdrop" 
             fill 
