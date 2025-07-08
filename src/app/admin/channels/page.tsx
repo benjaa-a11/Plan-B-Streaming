@@ -1,11 +1,11 @@
-import { getChannels } from "@/lib/actions";
+import { getAllChannelsForAdmin } from "@/lib/actions";
 import ChannelDataTable from "@/components/admin/channel-data-table";
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminChannelsPage() {
-  // Fetch all channels, including placeholders if DB is empty, for the admin panel
-  const channels = await getChannels(true);
+  // Fetch all channels for the admin panel, including hidden ones.
+  const channels = await getAllChannelsForAdmin(true);
 
   return (
     <div className="space-y-4">
