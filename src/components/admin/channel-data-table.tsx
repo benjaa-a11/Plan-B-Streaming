@@ -40,6 +40,8 @@ import { addChannel, updateChannel, deleteChannel } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
+import { Checkbox } from '../ui/checkbox';
+import { Badge } from '../ui/badge';
 
 const initialState = { message: '', errors: {}, success: false };
 
@@ -115,6 +117,19 @@ function ChannelForm({ channel, onFormSubmit }: { channel?: Channel | null; onFo
           <Label htmlFor="description">Descripción</Label>
           <Textarea id="description" name="description" defaultValue={channel?.description} />
            {state.errors?.description && <p className="text-sm font-medium text-destructive">{state.errors.description.join(', ')}</p>}
+        </div>
+        <div className="grid gap-2">
+          <div className="flex items-center space-x-3 rounded-md border p-4">
+            <Checkbox id="isHidden" name="isHidden" defaultChecked={channel?.isHidden} />
+            <div className="grid gap-1.5 leading-none">
+              <Label htmlFor="isHidden" className="font-semibold cursor-pointer">
+                Ocultar Canal
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Si se activa, el canal no aparecerá en la grilla principal, pero podrá usarse para eventos.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
       <DialogFooter>
@@ -207,6 +222,7 @@ export default function ChannelDataTable({ data }: { data: Channel[] }) {
               <TableHead className="w-[80px]">Logo</TableHead>
               <TableHead>Nombre</TableHead>
               <TableHead>Categoría</TableHead>
+              <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -218,6 +234,11 @@ export default function ChannelDataTable({ data }: { data: Channel[] }) {
                 </TableCell>
                 <TableCell className="font-medium">{channel.name}</TableCell>
                 <TableCell>{channel.category}</TableCell>
+                <TableCell>
+                  <Badge variant={channel.isHidden ? "secondary" : "outline"}>
+                    {channel.isHidden ? "Oculto" : "Visible"}
+                  </Badge>
+                </TableCell>
                 <TableCell className="text-right">
                   <div className='inline-flex'>
                       <Button variant="ghost" size="icon" onClick={() => handleEditClick(channel)}>
@@ -249,7 +270,7 @@ export default function ChannelDataTable({ data }: { data: Channel[] }) {
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   No hay canales para mostrar.
                 </TableCell>
               </TableRow>
