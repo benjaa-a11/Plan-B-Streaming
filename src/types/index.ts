@@ -5,6 +5,7 @@ export type Channel = {
   streamUrl: string[];
   category: string;
   description?: string;
+  isHidden?: boolean;
 };
 
 export type ChannelOption = {
