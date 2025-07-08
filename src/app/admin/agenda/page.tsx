@@ -1,4 +1,4 @@
-import { getChannels, getTeams, getTournaments } from "@/lib/actions";
+import { getTeams, getTournaments, getAllChannelsForAdmin } from "@/lib/actions";
 import { getAdminAgenda } from "@/lib/admin-actions";
 import AgendaDataTable from "@/components/admin/agenda-data-table";
 import type { AdminAgendaMatch } from "@/types";
@@ -7,11 +7,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminAgendaPage() {
   // Fetch all necessary data in parallel for the form
+  // We use getAllChannelsForAdmin to include hidden channels in the selection.
   const [agenda, teams, tournaments, channels] = await Promise.all([
     getAdminAgenda(),
     getTeams(true),
     getTournaments(true),
-    getChannels(true)
+    getAllChannelsForAdmin(true)
   ]);
 
   // Keep tournament options simple as they are not grouped
