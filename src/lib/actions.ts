@@ -376,10 +376,21 @@ const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Mov
     return null;
   }
 
-  // Ensure posterUrl is never an empty string to prevent preload errors.
-  const posterUrl = 
-    firestoreMovie.posterUrl || 
-    (tmdbMovieData?.poster_path ? `${TMDB_IMAGE_BASE_URL}${tmdbMovieData.poster_path}` : 'https://placehold.co/500x750.png');
+  // Professional safeguard for posterUrl to prevent empty strings.
+  let posterUrl = '';
+  // 1. Prioritize user-provided URL if it's a valid, non-empty string.
+  if (firestoreMovie.posterUrl && firestoreMovie.posterUrl.trim().length > 0) {
+      posterUrl = firestoreMovie.posterUrl;
+  } 
+  // 2. Fallback to TMDb if available.
+  else if (tmdbMovieData && tmdbMovieData.poster_path) {
+      posterUrl = `${TMDB_IMAGE_BASE_URL}${tmdbMovieData.poster_path}`;
+  }
+
+  // 3. Ultimate fallback to a placeholder to guarantee a valid src for images.
+  if (!posterUrl) {
+      posterUrl = 'https://placehold.co/500x750.png';
+  }
 
   const backdropUrl = tmdbMovieData?.backdrop_path ? `${TMDB_BACKDROP_BASE_URL}${tmdbMovieData.backdrop_path}` : undefined;
   const synopsis = firestoreMovie.synopsis || tmdbMovieData?.overview || '';
@@ -457,7 +468,8 @@ export const getMovies = async (includePlaceholders = false): Promise<Movie[]> =
 export const getMovieById = async (id: string): Promise<Movie | null> => {
   if (!TMDB_API_KEY) {
     console.error("CRITICAL: La variable de entorno TMDB_API_KEY no está configurada.");
-    return null;
+    const fallbackMovie = (await getMovies(true)).find(m => m.id === id);
+    return fallbackMovie || null;
   }
   try {
     const movieDoc = doc(db, "peliculas", id);
@@ -489,7 +501,9 @@ export const getMoviesByIds = async (ids: string[]): Promise<Movie[]> => {
   }
   if (!TMDB_API_KEY) {
     console.error("CRITICAL: La variable de entorno TMDB_API_KEY no está configurada.");
-    return [];
+    const allPlaceholderMovies = await getMovies(true);
+    const placeholderMap = new Map(allPlaceholderMovies.map(m => [m.id, m]));
+    return ids.map(id => placeholderMap.get(id)).filter((m): m is Movie => !!m);
   }
 
   try {
@@ -700,5 +714,3 @@ export const getTeams = async (includePlaceholders = false): Promise<Team[]> => 
         return useTeamFallbackData(includePlaceholders);
     }
 };
-
-    
