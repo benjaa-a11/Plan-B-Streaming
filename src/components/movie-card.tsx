@@ -26,6 +26,7 @@ const MovieCard = memo(function MovieCard({ movie, index = 0 }: MovieCardProps) 
         </div>
 
         <Image
+          unoptimized
           src={movie.posterUrl}
           alt={`Póster de ${movie.title}`}
           fill
