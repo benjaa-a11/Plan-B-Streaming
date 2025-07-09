@@ -155,7 +155,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
                         <ScrollArea>
                             <div className="space-y-1">
                                 {Object.keys(groupedTeams).sort().map(country => (
-                                    <Button key={country} variant={selectedCountry === country ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setSelectedCountry(country)}>
+                                    <Button key={country} type="button" variant={selectedCountry === country ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setSelectedCountry(country)}>
                                         {country}
                                     </Button>
                                 ))}
@@ -222,7 +222,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
                         <ScrollArea>
                             <div className="space-y-1">
                                 {Object.keys(groupedChannels).sort().map(cat => (
-                                    <Button key={cat} variant={selectedChannelCategory === cat ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setSelectedChannelCategory(cat)}>
+                                    <Button key={cat} type="button" variant={selectedChannelCategory === cat ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setSelectedChannelCategory(cat)}>
                                         {cat}
                                     </Button>
                                 ))}
@@ -320,7 +320,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
                         <p className="font-semibold">{STEPS[step - 1].name}</p>
                     </div>
                     {step > 1 && (
-                      <Button variant="ghost" size="sm" onClick={handlePrevStep}><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={handlePrevStep}><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button>
                     )}
                 </div>
             </div>
@@ -331,7 +331,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
             
             <div className="p-4 border-t flex justify-end gap-2">
                 {step < STEPS.length ? (
-                    <Button onClick={handleNextStep} disabled={isNextDisabled()}>Siguiente</Button>
+                    <Button type="button" onClick={handleNextStep} disabled={isNextDisabled()}>Siguiente</Button>
                 ) : (
                     <Button type="submit" form="agenda-form" disabled={!formData.team1 || !formData.team2 || !formData.tournamentId || !formData.date || !formData.time}>
                         {match ? 'Guardar Cambios' : 'Crear Partido'}
@@ -471,4 +471,3 @@ export default function AgendaDataTable({ data, teams, tournaments, channels }: 
     </div>
   );
 }
-
