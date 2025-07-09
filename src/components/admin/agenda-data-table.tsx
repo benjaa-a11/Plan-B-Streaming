@@ -194,7 +194,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
         
         case 4: // Date and Time
           return (
-              <div className="flex-auto p-4 space-y-6">
+              <div className="flex-auto space-y-6">
                   <div className="grid sm:grid-cols-2 gap-6">
                       <div>
                           <Label>Fecha del Partido</Label>
@@ -250,15 +250,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
             const selectedChannels = channels.filter(c => formData.channels.includes(c.id));
             
             return (
-                <form id="agenda-form" action={dispatch} className="flex-auto overflow-y-auto p-4 space-y-4">
-                     {/* Hidden inputs to submit data */}
-                    <input type="hidden" name="tournamentId" value={formData.tournamentId} />
-                    <input type="hidden" name="team1" value={formData.team1} />
-                    <input type="hidden" name="team2" value={formData.team2} />
-                    <input type="hidden" name="date" value={formData.date ? formData.date.toISOString().split('T')[0] : ''} />
-                    <input type="hidden" name="time" value={formData.time} />
-                    {formData.channels.map(cId => <input key={cId} type="hidden" name="channels" value={cId} />)}
-                    
+                 <div className="flex-auto overflow-y-auto space-y-4">
                     <h3 className="font-bold text-lg text-center">Resumen del Partido</h3>
                     <Card>
                         <CardContent className="p-4 space-y-4">
@@ -290,11 +282,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
                             </div>
                         </CardContent>
                     </Card>
-                    <div>
-                        <Label htmlFor="dates">Texto Adicional (Ej: Jornada, Grupo)</Label>
-                        <Input id="dates" name="dates" value={formData.dates} onChange={(e) => handleSelect('dates', e.target.value)} />
-                    </div>
-                </form>
+                </div>
             );
         }
     };
@@ -311,7 +299,15 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <form action={dispatch} className="flex flex-col h-full">
+            {/* Hidden inputs are now part of the main form structure */}
+            <input type="hidden" name="tournamentId" value={formData.tournamentId} />
+            <input type="hidden" name="team1" value={formData.team1} />
+            <input type="hidden" name="team2" value={formData.team2} />
+            <input type="hidden" name="date" value={formData.date ? formData.date.toISOString().split('T')[0] : ''} />
+            <input type="hidden" name="time" value={formData.time} />
+            {formData.channels.map(cId => <input key={cId} type="hidden" name="channels" value={cId} />)}
+
             <div className="p-4 border-b">
                 <Progress value={(step / STEPS.length) * 100} className="w-full mb-2" />
                 <div className="flex justify-between items-center">
@@ -327,18 +323,24 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
             
             <div className="flex-grow p-4 min-h-0 flex flex-col">
               {renderStepContent()}
+               {step === 6 && (
+                    <div className="mt-4">
+                        <Label htmlFor="dates">Texto Adicional (Ej: Jornada, Grupo)</Label>
+                        <Input id="dates" name="dates" value={formData.dates} onChange={(e) => handleSelect('dates', e.target.value)} />
+                    </div>
+                )}
             </div>
             
             <div className="p-4 border-t flex justify-end gap-2">
                 {step < STEPS.length ? (
                     <Button type="button" onClick={handleNextStep} disabled={isNextDisabled()}>Siguiente</Button>
                 ) : (
-                    <Button type="submit" form="agenda-form" disabled={!formData.team1 || !formData.team2 || !formData.tournamentId || !formData.date || !formData.time}>
+                    <Button type="submit" disabled={!formData.team1 || !formData.team2 || !formData.tournamentId || !formData.date || !formData.time}>
                         {match ? 'Guardar Cambios' : 'Crear Partido'}
                     </Button>
                 )}
             </div>
-        </div>
+        </form>
     );
 }
 
