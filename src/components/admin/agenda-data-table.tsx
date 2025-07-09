@@ -155,7 +155,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
                         <ScrollArea>
                             <div className="space-y-1">
                                 {Object.keys(groupedTeams).sort().map(country => (
-                                    <Button key={country} type="button" variant={selectedCountry === country ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setSelectedCountry(country)}>
+                                    <Button key={country} variant={selectedCountry === country ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setSelectedCountry(country)}>
                                         {country}
                                     </Button>
                                 ))}
@@ -208,7 +208,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
                       </div>
                       <div>
                           <Label htmlFor="time">Hora del Partido (Formato 24hs - AR)</Label>
-                          <Input id="time" name="time" type="time" value={formData.time} onChange={(e) => handleSelect('time', e.target.value)} />
+                          <Input id="time" name="time" type="time" value={formData.time} onChange={(e) => handleSelect('time', e.target.value)} className="mt-1" />
                       </div>
                   </div>
               </div>
@@ -222,7 +222,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
                         <ScrollArea>
                             <div className="space-y-1">
                                 {Object.keys(groupedChannels).sort().map(cat => (
-                                    <Button key={cat} type="button" variant={selectedChannelCategory === cat ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setSelectedChannelCategory(cat)}>
+                                    <Button key={cat} variant={selectedChannelCategory === cat ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setSelectedChannelCategory(cat)}>
                                         {cat}
                                     </Button>
                                 ))}
@@ -250,7 +250,15 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
             const selectedChannels = channels.filter(c => formData.channels.includes(c.id));
             
             return (
-                <div className="flex-auto overflow-y-auto p-4 space-y-4">
+                <form action={dispatch} className="flex-auto overflow-y-auto p-4 space-y-4">
+                     {/* Hidden inputs to submit data */}
+                    <input type="hidden" name="tournamentId" value={formData.tournamentId} />
+                    <input type="hidden" name="team1" value={formData.team1} />
+                    <input type="hidden" name="team2" value={formData.team2} />
+                    <input type="hidden" name="date" value={formData.date ? formData.date.toISOString().split('T')[0] : ''} />
+                    <input type="hidden" name="time" value={formData.time} />
+                    {formData.channels.map(cId => <input key={cId} type="hidden" name="channels" value={cId} />)}
+                    
                     <h3 className="font-bold text-lg text-center">Resumen del Partido</h3>
                     <Card>
                         <CardContent className="p-4 space-y-4">
@@ -286,7 +294,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
                         <Label htmlFor="dates">Texto Adicional (Ej: Jornada, Grupo)</Label>
                         <Input id="dates" name="dates" value={formData.dates} onChange={(e) => handleSelect('dates', e.target.value)} />
                     </div>
-                </div>
+                </form>
             );
         }
     };
@@ -303,16 +311,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
     }
 
     return (
-        <form action={dispatch} className="flex flex-col h-full">
-            {/* Hidden inputs to pass state to server action */}
-            <input type="hidden" name="tournamentId" value={formData.tournamentId} />
-            <input type="hidden" name="team1" value={formData.team1} />
-            <input type="hidden" name="team2" value={formData.team2} />
-            <input type="hidden" name="date" value={formData.date ? formData.date.toISOString().split('T')[0] : ''} />
-            <input type="hidden" name="time" value={formData.time} />
-            {formData.channels.map(cId => <input key={cId} type="hidden" name="channels" value={cId} />)}
-            {/* The 'dates' input is rendered within step 6 but is part of this form */}
-
+        <div className="flex flex-col h-full">
             <div className="p-4 border-b">
                 <Progress value={(step / STEPS.length) * 100} className="w-full mb-2" />
                 <div className="flex justify-between items-center">
@@ -321,7 +320,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
                         <p className="font-semibold">{STEPS[step - 1].name}</p>
                     </div>
                     {step > 1 && (
-                      <Button type="button" variant="ghost" size="sm" onClick={handlePrevStep}><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button>
+                      <Button variant="ghost" size="sm" onClick={handlePrevStep}><ArrowLeft className="mr-2 h-4 w-4" /> Volver</Button>
                     )}
                 </div>
             </div>
@@ -332,14 +331,14 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
             
             <div className="p-4 border-t flex justify-end gap-2">
                 {step < STEPS.length ? (
-                    <Button type="button" onClick={handleNextStep} disabled={isNextDisabled()}>Siguiente</Button>
+                    <Button onClick={handleNextStep} disabled={isNextDisabled()}>Siguiente</Button>
                 ) : (
-                    <Button type="submit" disabled={!formData.team1 || !formData.team2 || !formData.tournamentId || !formData.date || !formData.time}>
+                    <Button type="submit" formAction={formAction} disabled={!formData.team1 || !formData.team2 || !formData.tournamentId || !formData.date || !formData.time}>
                         {match ? 'Guardar Cambios' : 'Crear Partido'}
                     </Button>
                 )}
             </div>
-        </form>
+        </div>
     );
 }
 
@@ -472,3 +471,4 @@ export default function AgendaDataTable({ data, teams, tournaments, channels }: 
     </div>
   );
 }
+
