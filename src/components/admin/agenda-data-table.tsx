@@ -250,7 +250,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
             const selectedChannels = channels.filter(c => formData.channels.includes(c.id));
             
             return (
-                <form action={dispatch} className="flex-auto overflow-y-auto p-4 space-y-4">
+                <form id="agenda-form" action={dispatch} className="flex-auto overflow-y-auto p-4 space-y-4">
                      {/* Hidden inputs to submit data */}
                     <input type="hidden" name="tournamentId" value={formData.tournamentId} />
                     <input type="hidden" name="team1" value={formData.team1} />
@@ -333,7 +333,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: {
                 {step < STEPS.length ? (
                     <Button onClick={handleNextStep} disabled={isNextDisabled()}>Siguiente</Button>
                 ) : (
-                    <Button type="submit" formAction={formAction} disabled={!formData.team1 || !formData.team2 || !formData.tournamentId || !formData.date || !formData.time}>
+                    <Button type="submit" form="agenda-form" disabled={!formData.team1 || !formData.team2 || !formData.tournamentId || !formData.date || !formData.time}>
                         {match ? 'Guardar Cambios' : 'Crear Partido'}
                     </Button>
                 )}
