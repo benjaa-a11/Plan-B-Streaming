@@ -1,8 +1,9 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { db } from './firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, setDoc, getDoc, query, getDocs, Timestamp, deleteField } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, setDoc, getDoc, query, getDocs, Timestamp, deleteField, orderBy } from 'firebase/firestore';
 import { z } from 'zod';
 import type { AdminAgendaMatch } from '@/types';
 
@@ -563,7 +564,7 @@ export async function deleteMatch(id: string) {
 // Action to fetch all agenda items for the admin panel
 export async function getAdminAgenda(): Promise<AdminAgendaMatch[]> {
     try {
-        const agendaSnapshot = await getDocs(query(collection(db, "agenda")));
+        const agendaSnapshot = await getDocs(query(collection(db, "agenda"), orderBy("time", "asc")));
         const matches = agendaSnapshot.docs.map(doc => {
             const data = doc.data();
             const time = (data.time as Timestamp).toDate();
@@ -580,7 +581,7 @@ export async function getAdminAgenda(): Promise<AdminAgendaMatch[]> {
         
         // This is a simplified version for the admin panel.
         // The page will fetch names separately for display.
-        return matches.sort((a, b) => b.time.getTime() - a.time.getTime());
+        return matches;
 
     } catch (error) {
         console.error("Error fetching admin agenda:", error);
