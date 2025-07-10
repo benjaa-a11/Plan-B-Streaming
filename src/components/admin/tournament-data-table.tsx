@@ -31,30 +31,28 @@ function SubmitButton({ isEditing }: { isEditing: boolean }) {
 
 function TournamentForm({ tournament, onFormSubmit }: { tournament?: Tournament | null; onFormSubmit: () => void }) {
   const formAction = tournament?.id ? updateTournament.bind(null, tournament.id) : addTournament;
-  const [state, dispatch] = useActionState(formAction, initialState);
+  const [state, dispatch, isPending] = useActionState(formAction, initialState);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!state.message) return;
-
-    if (state.success) {
-        toast({
-            title: <div className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /><span>Éxito</span></div>,
-            description: state.message,
-        });
-        onFormSubmit();
-    } else {
-        toast({
-            variant: 'destructive',
-            title: <div className="flex items-center gap-2"><AlertCircle className="h-5 w-5" /><span>Error</span></div>,
-            description: state.message,
-        });
+    if (isPending) return;
+    if (state.message) {
+      if (state.success) {
+          toast({
+              title: <div className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /><span>Éxito</span></div>,
+              description: state.message,
+          });
+          onFormSubmit();
+      } else {
+          toast({
+              variant: 'destructive',
+              title: <div className="flex items-center gap-2"><AlertCircle className="h-5 w-5" /><span>Error</span></div>,
+              description: state.message,
+          });
+      }
     }
-    // Reset state after showing toast
-    state.message = '';
-    state.success = false;
-    state.errors = {};
-  }, [state, onFormSubmit, toast]);
+  }, [state, isPending, onFormSubmit, toast]);
+
 
   return (
     <form action={dispatch}>
@@ -97,7 +95,7 @@ function AdminTournamentCard({ tournament, onEdit, onDelete }: { tournament: Tou
         <Card className="opacity-0 animate-fade-in-up">
             <CardContent className="p-4 flex items-center gap-4">
                 {tournament.logoUrl?.[0] ? (
-                    <Image unoptimized src={tournament.logoUrl[0]} alt={tournament.name} width={48} height={48} className="object-contain rounded-md border p-1 bg-white h-12 w-12" />
+                    <Image unoptimized src={tournament.logoUrl[0]} alt={tournament.name} width={48} height={48} className="object-contain rounded-md border p-1 h-12 w-12" />
                   ): (
                     <div className="w-12 h-12 rounded-md border bg-muted flex-shrink-0" />
                   )}
@@ -231,7 +229,7 @@ export default function TournamentDataTable({ data }: { data: Tournament[] }) {
               <TableRow key={tournament.id} className="opacity-0 animate-fade-in-up">
                 <TableCell>
                   {tournament.logoUrl?.[0] ? (
-                    <Image unoptimized src={tournament.logoUrl[0]} alt={tournament.name} width={40} height={40} className="object-contain rounded-md border p-1 bg-white" />
+                    <Image unoptimized src={tournament.logoUrl[0]} alt={tournament.name} width={40} height={40} className="object-contain rounded-md border p-1" />
                   ): (
                     <div className="w-10 h-10 rounded-md border bg-muted" />
                   )}

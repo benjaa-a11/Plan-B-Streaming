@@ -73,6 +73,10 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                     description: state.message
                 });
             }
+            // IMPORTANT: Reset state after showing toast to prevent infinite loops
+             // This is a simplified reset. In a real app, you might use a dedicated reset action.
+            state.message = '';
+            state.success = false;
         }
     }, [state, onFormSubmit, toast]);
 
@@ -148,8 +152,10 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                         </div>
                         {/* Team List */}
                         <div className={cn("absolute inset-0 transition-all duration-300", selectedCountry ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full")}>
-                             <button type="button" onClick={() => setSelectedCountry(null)} className="absolute -top-4 left-0 text-sm font-semibold text-primary hover:underline mb-2 flex items-center gap-1 z-10"><ArrowLeft size={16}/> Volver a Países</button>
-                             <ScrollArea className="h-full pt-6">
+                             <button type="button" onClick={() => setSelectedCountry(null)} className="mb-2 flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                                <ArrowLeft size={16}/> Volver a Países
+                             </button>
+                             <ScrollArea className="h-[370px]">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-1">
                                     {selectedCountry && teamsByCountry[selectedCountry].map(team => (
                                         <button key={team.id} type="button" onClick={() => handleSelect(teamKey, team.id)} className="group flex flex-col items-center gap-2 p-3 rounded-lg border text-center transition-all hover:border-primary hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed" disabled={formData.team1 === team.id || formData.team2 === team.id}>
@@ -219,8 +225,10 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                         </div>
                         {/* Channel List */}
                         <div className={cn("absolute inset-0 transition-all duration-300", selectedCategory ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full")}>
-                             <button type="button" onClick={() => setSelectedCategory(null)} className="absolute -top-4 left-0 text-sm font-semibold text-primary hover:underline mb-2 flex items-center gap-1 z-10"><ArrowLeft size={16}/> Volver a Categorías</button>
-                             <ScrollArea className="h-full pt-6">
+                             <button type="button" onClick={() => setSelectedCategory(null)} className="mb-2 flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                                <ArrowLeft size={16}/> Volver a Categorías
+                             </button>
+                             <ScrollArea className="h-[370px]">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-1">
                                     {selectedCategory && channelsByCategory[selectedCategory].map(c => (
                                         <label key={c.id} className={cn("flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors", formData.channels?.includes(c.id) ? "border-primary bg-primary/10" : "hover:bg-muted/50")}>
@@ -449,7 +457,7 @@ export default function AgendaDataTable({ data, teams, tournaments, channels }: 
     }
     setIsAlertOpen(false);
     setSelectedMatch(null);
-  }
+  };
 
   const handleFormSubmit = () => {
     setIsFormOpen(false);
@@ -558,3 +566,4 @@ export default function AgendaDataTable({ data, teams, tournaments, channels }: 
     </div>
   );
 }
+
