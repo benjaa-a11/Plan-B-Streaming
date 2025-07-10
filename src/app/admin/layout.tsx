@@ -3,23 +3,34 @@
 
 import { ReactNode, useState } from "react";
 import Link from "next/link";
-import { Home, PanelLeft, LogOut } from "lucide-react";
-import { ThemeProvider } from "@/components/theme-provider";
+import { Home, PanelLeft, LogOut, Sun, Moon } from "lucide-react";
+import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import AdminSidebar from "@/components/admin/admin-sidebar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/lib/auth-actions";
 
-// This is a dedicated root layout for the /admin section.
-// It ensures the admin panel is completely separate from the main app,
-// with its own styling, navigation, and structure.
+function ThemeToggleButton() {
+    const { setTheme, theme } = useTheme();
+    return (
+        <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+        >
+            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+        </Button>
+    )
+}
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   return (
-    <html lang="es" suppressHydrationWarning>
-      <body className="bg-muted/40">
+    <div className="bg-muted/40">
         <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -44,21 +55,24 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                  <div className="flex-1">
                     {/* Breadcrumbs could be added here in the future */}
                  </div>
-                 <Button variant="outline" asChild>
-                   <Link
-                      href="/"
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <Home className="h-4 w-4" />
-                      <span>Ver Sitio</span>
-                    </Link>
-                 </Button>
-                 <form action={logout}>
-                    <Button variant="destructive" size="sm">
-                      <LogOut className="h-4 w-4 mr-2" />
-                      <span>Salir</span>
+                 <div className="flex items-center gap-2">
+                    <ThemeToggleButton />
+                    <Button variant="outline" asChild>
+                    <Link
+                        href="/"
+                        className="flex items-center gap-2 text-sm"
+                        >
+                        <Home className="h-4 w-4" />
+                        <span>Ver Sitio</span>
+                        </Link>
                     </Button>
-                 </form>
+                    <form action={logout}>
+                        <Button variant="destructive" size="sm">
+                        <LogOut className="h-4 w-4 mr-2" />
+                        <span>Salir</span>
+                        </Button>
+                    </form>
+                 </div>
               </header>
               <main className="flex-1 items-start gap-4 p-4 sm:px-6 sm:py-6 md:gap-8">
                 {children}
@@ -67,7 +81,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
           <Toaster />
         </ThemeProvider>
-      </body>
-    </html>
+    </div>
   );
 }
