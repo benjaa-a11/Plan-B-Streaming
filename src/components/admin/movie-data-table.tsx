@@ -1,21 +1,23 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useActionState } from 'react';
 import type { Movie } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import { addMovie, updateMovie, deleteMovie } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertical } from 'lucide-react';
 import Image from 'next/image';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Card, CardContent } from '../ui/card';
 
 const initialState = { message: '', errors: {}, success: false };
 
@@ -31,37 +33,29 @@ function SubmitButton({ isEditing }: { isEditing: boolean }) {
 
 function MovieForm({ movie, onFormSubmit }: { movie?: Movie | null; onFormSubmit: () => void }) {
   const formAction = movie?.id ? updateMovie.bind(null, movie.id) : addMovie;
-  const [state, dispatch] = useFormState(formAction, initialState);
+  const [state, dispatch] = useActionState(formAction, initialState);
   const { toast } = useToast();
 
   useEffect(() => {
-    if(state.success) {
+    if (!state.message) return;
+
+    if (state.success) {
         toast({
-            title: (
-                <div className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <div>
-                        <p className="font-semibold text-foreground">Éxito</p>
-                        <p className="text-sm text-muted-foreground mt-1">{state.message}</p>
-                    </div>
-                </div>
-            )
+            title: <div className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /><span>Éxito</span></div>,
+            description: state.message,
         });
         onFormSubmit();
-    } else if (state.message && !Object.keys(state.errors ?? {}).length) {
+    } else {
         toast({
             variant: 'destructive',
-            title: (
-                <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-destructive-foreground mt-0.5 flex-shrink-0" />
-                    <div>
-                        <p className="font-semibold text-destructive-foreground">Error</p>
-                        <p className="text-sm text-destructive-foreground/80 mt-1">{state.message}</p>
-                    </div>
-                </div>
-            )
+            title: <div className="flex items-center gap-2"><AlertCircle className="h-5 w-5" /><span>Error</span></div>,
+            description: state.message,
         });
     }
+    // Reset state after showing toast
+    state.message = '';
+    state.success = false;
+    state.errors = {};
   }, [state, onFormSubmit, toast]);
 
   return (
@@ -121,53 +115,81 @@ function MovieForm({ movie, onFormSubmit }: { movie?: Movie | null; onFormSubmit
   );
 }
 
+function AdminMovieCard({ movie, onEdit, onDelete }: { movie: Movie; onEdit: (movie: Movie) => void; onDelete: (movie: Movie) => void; }) {
+    return (
+        <Card className="opacity-0 animate-fade-in-up">
+            <CardContent className="p-4 flex items-center gap-4">
+                <Image unoptimized src={movie.posterUrl} alt={movie.title} width={48} height={72} className="object-cover rounded-md border p-1 h-18 w-12" />
+                <div className="flex-1 space-y-1">
+                    <p className="font-semibold">{movie.title}</p>
+                    <p className="text-sm text-muted-foreground">Formato: {movie.format}</p>
+                </div>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menú</span>
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit(movie)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>Editar</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDelete(movie)} className="text-destructive">
+                             <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Eliminar</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </CardContent>
+        </Card>
+    );
+}
+
+
 export default function MovieDataTable({ data }: { data: Movie[] }) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const { toast } = useToast();
 
   const handleEditClick = (movie: Movie) => {
     setSelectedMovie(movie);
-    setIsDialogOpen(true);
+    setIsFormOpen(true);
   };
 
   const handleAddClick = () => {
     setSelectedMovie(null);
-    setIsDialogOpen(true);
+    setIsFormOpen(true);
   };
   
-  const handleDelete = async (id: string) => {
-    const result = await deleteMovie(id);
+  const handleDeleteClick = (movie: Movie) => {
+    setSelectedMovie(movie);
+    setIsAlertOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedMovie) return;
+    const result = await deleteMovie(selectedMovie.id);
     if(result.success) {
       toast({
-        title: (
-            <div className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                <div>
-                    <p className="font-semibold text-foreground">Película Eliminada</p>
-                    <p className="text-sm text-muted-foreground mt-1">{result.message}</p>
-                </div>
-            </div>
-        )
+        title: <div className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /><span>Película Eliminada</span></div>,
+        description: result.message
       });
     } else {
       toast({
         variant: 'destructive',
-        title: (
-            <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-destructive-foreground mt-0.5 flex-shrink-0" />
-                <div>
-                    <p className="font-semibold text-destructive-foreground">Error</p>
-                    <p className="text-sm text-destructive-foreground/80 mt-1">{result.message}</p>
-                </div>
-            </div>
-        )
+        title: <div className="flex items-center gap-2"><AlertCircle className="h-5 w-5" /><span>Error</span></div>,
+        description: result.message
       });
     }
+    setIsAlertOpen(false);
+    setSelectedMovie(null);
   }
 
   const handleFormSubmit = () => {
-    setIsDialogOpen(false);
+    setIsFormOpen(false);
     setSelectedMovie(null);
   };
 
@@ -180,7 +202,7 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
         </Button>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-xl max-h-[90dvh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedMovie ? 'Editar Película' : 'Añadir Nueva Película'}</DialogTitle>
@@ -188,13 +210,31 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
               {selectedMovie ? 'Modifica los detalles de la película existente.' : 'Completa el formulario para añadir una nueva película a la aplicación.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-grow overflow-y-auto pr-4">
-            <MovieForm movie={selectedMovie} onFormSubmit={handleFormSubmit} />
+          <div className="flex-grow overflow-y-auto pr-6 -mr-6">
+            <MovieForm key={selectedMovie?.id || 'new'} movie={selectedMovie} onFormSubmit={handleFormSubmit} />
           </div>
         </DialogContent>
       </Dialog>
       
-      <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>¿Eliminar la película {selectedMovie?.title}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      Esta acción no se puede deshacer.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setSelectedMovie(null)}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+                      Eliminar
+                  </AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Desktop Table */}
+      <div className="hidden md:block rounded-lg border bg-card text-card-foreground shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -206,7 +246,7 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
           </TableHeader>
           <TableBody>
             {data && data.length > 0 ? data.map((movie) => (
-              <TableRow key={movie.id}>
+              <TableRow key={movie.id} className="opacity-0 animate-fade-in-up">
                 <TableCell>
                   <Image unoptimized src={movie.posterUrl} alt={movie.title} width={40} height={60} className="object-cover rounded-md border p-1" />
                 </TableCell>
@@ -217,27 +257,9 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
                       <Button variant="ghost" size="icon" onClick={() => handleEditClick(movie)}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                              </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                              <AlertDialogHeader>
-                                  <AlertDialogTitle>¿Estás seguro de eliminar esta película?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                      Esta acción no se puede deshacer. Se eliminará la película <strong>{movie.title}</strong> permanentemente.
-                                  </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(movie.id)} className="bg-destructive hover:bg-destructive/90">
-                                      Eliminar
-                                  </AlertDialogAction>
-                              </AlertDialogFooter>
-                          </AlertDialogContent>
-                      </AlertDialog>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(movie)}>
+                          <Trash2 className="h-4 w-4" />
+                      </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -251,6 +273,25 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
           </TableBody>
         </Table>
       </div>
+
+       {/* Mobile Cards */}
+      <div className="md:hidden space-y-4">
+        {data && data.length > 0 ? (
+          data.map((movie) => (
+             <AdminMovieCard
+                key={movie.id}
+                movie={movie}
+                onEdit={handleEditClick}
+                onDelete={handleDeleteClick}
+            />
+          ))
+        ) : (
+          <div className="text-center py-10">
+            <p>No hay películas para mostrar.</p>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
