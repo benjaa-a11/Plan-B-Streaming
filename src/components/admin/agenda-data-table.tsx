@@ -59,6 +59,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
     const { toast } = useToast();
 
     useEffect(() => {
+        if (isPending) return;
         if (state.message) {
             if (state.success) {
                 toast({
@@ -73,12 +74,8 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                     description: state.message
                 });
             }
-            // IMPORTANT: Reset state after showing toast to prevent infinite loops
-             // This is a simplified reset. In a real app, you might use a dedicated reset action.
-            state.message = '';
-            state.success = false;
         }
-    }, [state, onFormSubmit, toast]);
+    }, [state, isPending, onFormSubmit, toast]);
 
 
     const nextStep = () => { setStep(s => s + 1); };
@@ -111,7 +108,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
         }, {});
     }, [channels]);
 
-    const renderStep = () => {
+    const renderStepContent = () => {
         // Step 1: Select Tournament
         if (step === 1) {
             return (
@@ -120,7 +117,7 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                     <ScrollArea className="h-[400px]">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-1">
                             {tournaments.map(t => (
-                                <button key={t.id} type="button" onClick={() => handleSelect('tournamentId', t.tournamentId)} className="group flex flex-col items-center gap-2 p-3 rounded-lg border text-center transition-all hover:border-primary hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                                <button key={t.id} type="button" onClick={() => handleSelect('tournamentId', t.tournamentId)} className={cn("group flex flex-col items-center gap-2 p-3 rounded-lg border text-center transition-all hover:border-primary hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary", formData.tournamentId === t.tournamentId && "border-primary ring-2 ring-primary")}>
                                     <Image src={t.logoUrl?.[0] || 'https://placehold.co/128x128.png'} alt={t.name} width={48} height={48} className="h-12 w-12 object-contain" unoptimized />
                                     <span className="text-xs font-medium">{t.name}</span>
                                 </button>
@@ -135,11 +132,11 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
         if (step === 2 || step === 3) {
             const teamKey = step === 2 ? 'team1' : 'team2';
             return (
-                <div key={`step${step}`} className="animate-fade-in-up">
+                <div key={`step${step}`} className="animate-fade-in-up h-[400px] flex flex-col">
                     <h3 className="text-xl font-semibold mb-4 text-center">{step}. Selecciona el Equipo {step - 1}</h3>
-                    <div className="relative h-[400px] overflow-hidden">
+                    <div className="relative flex-grow overflow-hidden">
                         {/* Country List */}
-                        <div className={cn("absolute inset-0 transition-all duration-300", selectedCountry ? "opacity-0 -translate-x-full" : "opacity-100 translate-x-0")}>
+                        <div className={cn("absolute inset-0 transition-all duration-300", selectedCountry ? "opacity-0 -translate-x-full pointer-events-none" : "opacity-100 translate-x-0")}>
                              <ScrollArea className="h-full">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-1">
                                     {Object.keys(teamsByCountry).sort().map(country => (
@@ -151,14 +148,16 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                             </ScrollArea>
                         </div>
                         {/* Team List */}
-                        <div className={cn("absolute inset-0 transition-all duration-300", selectedCountry ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full")}>
-                             <button type="button" onClick={() => setSelectedCountry(null)} className="mb-2 flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
-                                <ArrowLeft size={16}/> Volver a Países
-                             </button>
-                             <ScrollArea className="h-[370px]">
+                        <div className={cn("absolute inset-0 transition-all duration-300 flex flex-col", selectedCountry ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none")}>
+                             <div className="flex-shrink-0 mb-2">
+                                <button type="button" onClick={() => setSelectedCountry(null)} className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                                    <ArrowLeft size={16}/> Volver a Países
+                                 </button>
+                             </div>
+                             <ScrollArea className="flex-grow">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-1">
                                     {selectedCountry && teamsByCountry[selectedCountry].map(team => (
-                                        <button key={team.id} type="button" onClick={() => handleSelect(teamKey, team.id)} className="group flex flex-col items-center gap-2 p-3 rounded-lg border text-center transition-all hover:border-primary hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed" disabled={formData.team1 === team.id || formData.team2 === team.id}>
+                                        <button key={team.id} type="button" onClick={() => handleSelect(teamKey, team.id)} className={cn("group flex flex-col items-center gap-2 p-3 rounded-lg border text-center transition-all hover:border-primary hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed", (formData.team1 === team.id || formData.team2 === team.id) && "border-primary ring-2 ring-primary")} disabled={formData[teamKey === 'team1' ? 'team2' : 'team1'] === team.id}>
                                             <Image src={team.logoUrl} alt={team.name} width={48} height={48} className="h-12 w-12 object-contain" unoptimized />
                                             <span className="text-xs font-medium">{team.name}</span>
                                         </button>
@@ -198,9 +197,6 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                             />
                         </div>
                     </div>
-                     <div className="text-center mt-6">
-                        <Button type="button" onClick={nextStep}>Siguiente</Button>
-                    </div>
                 </div>
             )
         }
@@ -208,11 +204,11 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
         // Step 5: Channels
         if (step === 5) {
              return (
-                <div key="step5" className="animate-fade-in-up">
+                <div key="step5" className="animate-fade-in-up h-[400px] flex flex-col">
                     <h3 className="text-xl font-semibold mb-4 text-center">5. Canales de Transmisión</h3>
-                    <div className="relative h-[400px] overflow-hidden">
+                    <div className="relative flex-grow overflow-hidden">
                         {/* Category List */}
-                        <div className={cn("absolute inset-0 transition-all duration-300", selectedCategory ? "opacity-0 -translate-x-full" : "opacity-100 translate-x-0")}>
+                        <div className={cn("absolute inset-0 transition-all duration-300", selectedCategory ? "opacity-0 -translate-x-full pointer-events-none" : "opacity-100 translate-x-0")}>
                              <ScrollArea className="h-full">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-1">
                                     {Object.keys(channelsByCategory).sort().map(category => (
@@ -224,11 +220,13 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                             </ScrollArea>
                         </div>
                         {/* Channel List */}
-                        <div className={cn("absolute inset-0 transition-all duration-300", selectedCategory ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full")}>
-                             <button type="button" onClick={() => setSelectedCategory(null)} className="mb-2 flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
-                                <ArrowLeft size={16}/> Volver a Categorías
-                             </button>
-                             <ScrollArea className="h-[370px]">
+                        <div className={cn("absolute inset-0 transition-all duration-300 flex flex-col", selectedCategory ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none")}>
+                             <div className="flex-shrink-0 mb-2">
+                                <button type="button" onClick={() => setSelectedCategory(null)} className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                                    <ArrowLeft size={16}/> Volver a Categorías
+                                 </button>
+                             </div>
+                             <ScrollArea className="flex-grow">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-1">
                                     {selectedCategory && channelsByCategory[selectedCategory].map(c => (
                                         <label key={c.id} className={cn("flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors", formData.channels?.includes(c.id) ? "border-primary bg-primary/10" : "hover:bg-muted/50")}>
@@ -248,9 +246,6 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                             </ScrollArea>
                         </div>
                     </div>
-                     <div className="text-center mt-6">
-                        <Button type="button" onClick={nextStep}>Siguiente</Button>
-                    </div>
                 </div>
             );
         }
@@ -267,9 +262,6 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                             onChange={(e) => setFormData(p => ({ ...p, dates: e.target.value }))}
                         />
                         <p className="text-xs text-muted-foreground mt-2">Este texto aparece debajo del nombre del torneo en la tarjeta del partido.</p>
-                    </div>
-                     <div className="text-center mt-6">
-                        <Button type="button" onClick={nextStep}>Siguiente</Button>
                     </div>
                 </div>
             );
@@ -345,10 +337,10 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
             
             <form action={() => dispatch(formData as AdminAgendaMatch)} className="flex-grow flex flex-col overflow-hidden">
                 <div className="flex-grow overflow-y-auto pr-6 -mr-6 min-h-[450px]">
-                    {renderStep()}
+                    {renderStepContent()}
                 </div>
 
-                <DialogFooter className="mt-4 flex-shrink-0">
+                <DialogFooter className="mt-4 pt-4 border-t flex-shrink-0">
                     <div className="w-full flex justify-between items-center">
                         <div>
                              {step > 1 && (
@@ -358,10 +350,15 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
                                 </Button>
                             )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-2">
                              <DialogClose asChild>
                                 <Button type="button" variant="outline">Cancelar</Button>
                             </DialogClose>
+                            {step < 7 && (
+                                <Button type="button" onClick={nextStep}>
+                                    Siguiente
+                                </Button>
+                            )}
                             {step === 7 && (
                                 <Button type="submit" disabled={!formData.team1 || !formData.team2 || isPending}>
                                     {match ? 'Guardar Cambios' : 'Añadir Partido'}
@@ -566,4 +563,3 @@ export default function AgendaDataTable({ data, teams, tournaments, channels }: 
     </div>
   );
 }
-

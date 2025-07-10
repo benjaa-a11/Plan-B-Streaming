@@ -4,7 +4,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Home, Tv, Film, Radio, CalendarDays, Shield, Users, Settings } from "lucide-react";
+import { Home, Tv, Film, Radio, CalendarDays, Shield, Users } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
