@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { getCategories, getMovieCategories } from "@/lib/actions";
 import { Providers } from "@/components/providers";
+import { Analytics } from "@vercel/analytics/next";
 
 const fontPoppins = Poppins({
   subsets: ['latin'],
@@ -69,6 +70,7 @@ export default async function RootLayout({
         >
           {children}
         </Providers>
+        <Analytics />
       </body>
     </html>
   );

@@ -542,8 +542,9 @@ export async function updateMatch(id: string, prevState: FormState, data: AdminA
         await handleMatchAction(data, id);
         return { success: true, message: 'Partido actualizado exitosamente.' };
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error del servidor al actualizar el partido.';
         console.error("Error updating match:", error);
-        return { success: false, message: 'Error del servidor al actualizar el partido.' };
+        return { success: false, message: errorMessage };
     }
 }
 
@@ -564,7 +565,7 @@ export async function deleteMatch(id: string) {
 // Action to fetch all agenda items for the admin panel
 export async function getAdminAgenda(): Promise<AdminAgendaMatch[]> {
     try {
-        const agendaSnapshot = await getDocs(query(collection(db, "agenda"), orderBy("time", "asc")));
+        const agendaSnapshot = await getDocs(query(collection(db, "agenda"), orderBy("time", "desc")));
         const matches = agendaSnapshot.docs.map(doc => {
             const data = doc.data();
             const time = (data.time as Timestamp).toDate();
