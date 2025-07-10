@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -491,99 +490,59 @@ export async function deleteTeam(path: string) {
 
 // --- AGENDA ---
 
-const AgendaSchema = z.object({
-  team1: z.string().min(1, 'Equipo 1 es requerido.'),
-  team2: z.string().min(1, 'Equipo 2 es requerido.'),
-  tournamentId: z.string().min(1, 'Torneo es requerido.'),
-  date: z.string().min(1, 'La fecha es requerida.'),
-  time: z.string().min(1, 'La hora es requerida.'),
-  channels: z.array(z.string()).optional(),
-  dates: z.string().optional(),
-}).refine(data => data.team1 !== data.team2, {
-    message: "Equipo 1 y Equipo 2 no pueden ser iguales.",
-    path: ["team2"],
-});
-
-export async function addMatch(prevState: FormState, formData: FormData): Promise<FormState> {
-    const rawData = {
-        team1: formData.get('team1'),
-        team2: formData.get('team2'),
-        tournamentId: formData.get('tournamentId'),
-        date: formData.get('date'),
-        time: formData.get('time'),
-        channels: formData.getAll('channels'),
-        dates: formData.get('dates'),
-    };
-
-    const validatedFields = AgendaSchema.safeParse(rawData);
-
-    if (!validatedFields.success) {
-        return { message: 'Error de validación.', errors: validatedFields.error.flatten().fieldErrors, success: false };
+const handleMatchAction = async (data: AdminAgendaMatch, existingId?: string) => {
+    // Basic validation
+    if (!data.tournamentId || !data.team1 || !data.team2 || !data.time) {
+        throw new Error('Faltan datos requeridos para guardar el partido.');
+    }
+    if (data.team1 === data.team2) {
+        throw new Error('Los equipos no pueden ser iguales.');
     }
 
-    try {
-        const { date, time, team1, team2, ...rest } = validatedFields.data;
-        // Interpret the time as being in Argentina (UTC-3)
-        const dateTimeString = `${date}T${time}:00-03:00`;
-        const matchTimestamp = Timestamp.fromDate(new Date(dateTimeString));
+    const { time, ...restOfData } = data;
+    const matchTimestamp = Timestamp.fromDate(time);
+    const dataToSave = { ...restOfData, time: matchTimestamp };
 
-        const dataToSave = { team1, team2, ...rest, time: matchTimestamp };
-        
-        // Create a custom, readable ID for the match
-        const id = `${slugify(team1 as string)}-vs-${slugify(team2 as string)}-${date}`;
+    if (existingId) {
+        // Update existing match
+        const matchRef = doc(db, 'agenda', existingId);
+        await updateDoc(matchRef, dataToSave);
+    } else {
+        // Create new match
+        const dateString = time.toISOString().split('T')[0];
+        const id = `${slugify(data.team1)}-vs-${slugify(data.team2)}-${dateString}`;
         const matchRef = doc(db, 'agenda', id);
 
         const docSnap = await getDoc(matchRef);
         if (docSnap.exists()) {
-          return { message: `Un partido con esta combinación de equipos y fecha ya existe (ID: ${id}).`, success: false };
+            throw new Error(`Un partido con ID '${id}' ya existe.`);
         }
-
         await setDoc(matchRef, dataToSave);
-        revalidatePath('/admin/agenda');
-        revalidatePath('/');
-        return { message: 'Partido añadido exitosamente.', success: true };
+    }
+    
+    revalidatePath('/admin/agenda');
+    revalidatePath('/');
+}
 
+export async function addMatch(prevState: FormState, data: AdminAgendaMatch) {
+    try {
+        await handleMatchAction(data);
+        return { success: true, message: 'Partido añadido exitosamente.' };
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error del servidor al añadir el partido.';
         console.error("Error adding match:", error);
-        return { message: 'Error del servidor al añadir el partido.', success: false };
+        return { success: false, message: errorMessage };
     }
 }
 
-export async function updateMatch(id: string, prevState: FormState, formData: FormData): Promise<FormState> {
-    if (!id) return { message: 'ID de partido no proporcionado.', success: false };
-
-    const rawData = {
-        team1: formData.get('team1'),
-        team2: formData.get('team2'),
-        tournamentId: formData.get('tournamentId'),
-        date: formData.get('date'),
-        time: formData.get('time'),
-        channels: formData.getAll('channels'),
-        dates: formData.get('dates'),
-    };
-
-    const validatedFields = AgendaSchema.safeParse(rawData);
-
-    if (!validatedFields.success) {
-        return { message: 'Error de validación.', errors: validatedFields.error.flatten().fieldErrors, success: false };
-    }
-    
+export async function updateMatch(id: string, prevState: FormState, data: AdminAgendaMatch) {
+    if (!id) return { success: false, message: 'ID de partido no proporcionado.' };
     try {
-        const { date, time, ...rest } = validatedFields.data;
-        // Interpret the time as being in Argentina (UTC-3)
-        const dateTimeString = `${date}T${time}:00-03:00`;
-        const matchTimestamp = Timestamp.fromDate(new Date(dateTimeString));
-
-        const dataToSave = { ...rest, time: matchTimestamp };
-        
-        await updateDoc(doc(db, 'agenda', id), dataToSave);
-        revalidatePath('/admin/agenda');
-        revalidatePath('/');
-        return { message: 'Partido actualizado exitosamente.', success: true };
-
+        await handleMatchAction(data, id);
+        return { success: true, message: 'Partido actualizado exitosamente.' };
     } catch (error) {
         console.error("Error updating match:", error);
-        return { message: 'Error del servidor al actualizar el partido.', success: false };
+        return { success: false, message: 'Error del servidor al actualizar el partido.' };
     }
 }
 
