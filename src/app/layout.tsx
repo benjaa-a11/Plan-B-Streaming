@@ -21,7 +21,7 @@ const fontPtSans = PT_Sans({
 export const metadata: Metadata = {
   title: "Plan B Streaming",
   description: "Tu alternativa para ver televisión en vivo.",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.json",
   icons: {
     apple: "/apple-touch-icon.png",
   },
