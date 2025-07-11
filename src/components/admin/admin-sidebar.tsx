@@ -4,7 +4,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Home, Tv, Film, Radio, CalendarDays, Shield, Users } from "lucide-react";
+import { Home, Tv, Film, Radio, CalendarDays, Shield, Users, Bell } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,7 @@ const navItems = [
     { href: "/admin/agenda", label: "Agenda", icon: CalendarDays },
     { href: "/admin/tournaments", label: "Torneos", icon: Shield },
     { href: "/admin/teams", label: "Equipos", icon: Users },
+    { href: "/admin/notifications", label: "Notificaciones", icon: Bell },
 ];
 
 type AdminSidebarProps = {
