@@ -1,3 +1,4 @@
+
 "use client";
 import type { Match } from "@/types";
 import Image from "next/image";
@@ -201,16 +202,16 @@ const MatchCard = memo(function MatchCard({ match }: { match: Match }) {
             
             <CardContent className="p-6 flex-grow flex flex-col items-center justify-center">
                 <div className="flex items-center justify-around w-full gap-4">
-                    <div className="flex flex-col items-center gap-2 text-center flex-1">
+                    <div className="flex flex-col items-center gap-2 text-center flex-1 min-w-0">
                         <Image unoptimized src={match.team1Logo || 'https://placehold.co/128x128.png'} alt={match.team1} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
-                        <h3 className="font-semibold text-base text-center">{match.team1}</h3>
+                        <h3 className="font-semibold text-base text-center w-full truncate">{match.team1}</h3>
                     </div>
                     
                     <div className="text-muted-foreground font-bold text-lg">VS</div>
                     
-                    <div className="flex flex-col items-center gap-2 text-center flex-1">
+                    <div className="flex flex-col items-center gap-2 text-center flex-1 min-w-0">
                         <Image unoptimized src={match.team2Logo || 'https://placehold.co/128x128.png'} alt={match.team2} width={64} height={64} sizes="64px" className="h-16 w-16 object-contain drop-shadow-sm" data-ai-hint="team logo" />
-                        <h3 className="font-semibold text-base text-center">{match.team2}</h3>
+                        <h3 className="font-semibold text-base text-center w-full truncate">{match.team2}</h3>
                     </div>
                 </div>
             </CardContent>
