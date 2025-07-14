@@ -24,8 +24,7 @@ export default {
         'safe-right': 'env(safe-area-inset-right)',
       },
       fontFamily: {
-        sans: ["var(--font-pt-sans)", ...fontFamily.sans],
-        poppins: ["var(--font-poppins)", ...fontFamily.sans],
+        sans: ["var(--font-inter)", ...fontFamily.sans],
       },
       colors: {
         background: 'hsl(var(--background))',

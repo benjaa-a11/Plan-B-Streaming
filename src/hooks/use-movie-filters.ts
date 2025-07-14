@@ -1,7 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useMemo } from 'react';
-import type { ReactNode } from 'react';
+import * as React from 'react';
 
 type MovieFilterContextType = {
   searchTerm: string;
@@ -11,19 +10,19 @@ type MovieFilterContextType = {
   allCategories: string[];
 };
 
-const MovieFilterContext = createContext<MovieFilterContextType | undefined>(undefined);
+const MovieFilterContext = React.createContext<MovieFilterContextType | undefined>(undefined);
 
 export function MovieFilterProvider({
   children,
   initialCategories = [],
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
   initialCategories: string[];
 }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Todas');
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [selectedCategory, setSelectedCategory] = React.useState('Todos');
 
-  const allCategories = useMemo(() => ['Todos', ...initialCategories], [initialCategories]);
+  const allCategories = React.useMemo(() => ['Todos', ...initialCategories], [initialCategories]);
 
   const value = {
     searchTerm,
@@ -37,7 +36,7 @@ export function MovieFilterProvider({
 }
 
 export function useMovieFilters() {
-  const context = useContext(MovieFilterContext);
+  const context = React.useContext(MovieFilterContext);
   if (context === undefined) {
     throw new Error('useMovieFilters must be used within a MovieFilterProvider');
   }

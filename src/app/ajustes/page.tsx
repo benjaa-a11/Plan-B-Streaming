@@ -16,14 +16,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Moon, Sun, Monitor, Trash2, Download, CheckCircle, AlertCircle, Info, Bell, BellOff } from "lucide-react";
+import { Moon, Sun, Monitor, Trash2, Download, CheckCircle, AlertCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useCallback } from "react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { urlBase64ToUint8Array } from "@/lib/utils";
-import { saveSubscription, deleteSubscription } from "@/lib/notification-actions";
-
+import { useState, useEffect } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -77,115 +72,20 @@ export default function SettingsPage() {
 
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
-  
-  // Notification states
-  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
-  const [isNotificationPermissionGranted, setIsNotificationPermissionGranted] = useState(false);
-  const [isSubscribing, setIsSubscribing] = useState(false);
-
-
-  const subscribeToNotifications = useCallback(async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        toast({ variant: 'destructive', title: 'Navegador no compatible', description: 'Las notificaciones push no son compatibles con tu navegador.' });
-        return;
-    }
-
-    setIsSubscribing(true);
-    try {
-        const registration = await navigator.serviceWorker.ready;
-        const existingSubscription = await registration.pushManager.getSubscription();
-        
-        if (existingSubscription) {
-            await deleteSubscription(existingSubscription);
-        }
-
-        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!vapidPublicKey) {
-          throw new Error("VAPID public key not found.");
-        }
-
-        const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-        });
-
-        await saveSubscription(subscription);
-        setIsNotificationsEnabled(true);
-        toast({ title: "Suscripción exitosa", description: "Recibirás notificaciones de ahora en adelante." });
-    } catch (error) {
-        console.error("Error subscribing to notifications:", error);
-        if (error instanceof Error && error.name === 'NotAllowedError') {
-             toast({ variant: 'destructive', title: 'Permiso denegado', description: 'Has bloqueado las notificaciones. Habilítalas en los ajustes de tu navegador.' });
-        } else {
-             toast({ variant: 'destructive', title: 'Error de suscripción', description: 'No se pudo completar la suscripción a las notificaciones.' });
-        }
-        setIsNotificationsEnabled(false);
-    } finally {
-        setIsSubscribing(false);
-    }
-  }, [toast]);
-
-  const unsubscribeFromNotifications = useCallback(async () => {
-      setIsSubscribing(true);
-      try {
-          const registration = await navigator.serviceWorker.ready;
-          const subscription = await registration.pushManager.getSubscription();
-          if (subscription) {
-              await subscription.unsubscribe();
-              await deleteSubscription(subscription);
-              toast({ title: "Suscripción cancelada", description: "Ya no recibirás notificaciones." });
-          }
-          setIsNotificationsEnabled(false);
-      } catch (error) {
-          console.error("Error unsubscribing:", error);
-          toast({ variant: 'destructive', title: 'Error al cancelar', description: 'No se pudo cancelar la suscripción.' });
-      } finally {
-          setIsSubscribing(false);
-      }
-  }, [toast]);
-
-
-  const handleNotificationToggle = async (checked: boolean) => {
-    if (Notification.permission === 'denied') {
-        toast({ variant: 'destructive', title: 'Permiso bloqueado', description: 'Debes habilitar las notificaciones en los ajustes de tu navegador.' });
-        return;
-    }
-
-    if (checked) {
-        await subscribeToNotifications();
-    } else {
-        await unsubscribeFromNotifications();
-    }
-  };
-
 
   useEffect(() => {
     setIsClient(true);
     
-    // PWA Install prompt logic
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
     };
+
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsStandalone(true);
     }
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    
-    // Notification permission and subscription status logic
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-        if (Notification.permission === 'granted') {
-             setIsNotificationPermissionGranted(true);
-             navigator.serviceWorker.ready.then(reg => {
-                 reg.pushManager.getSubscription().then(sub => {
-                     if (sub) {
-                         setIsNotificationsEnabled(true);
-                     }
-                 });
-             });
-        }
-    }
 
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -198,26 +98,29 @@ export default function SettingsPage() {
     { value: "system", label: "Sistema", icon: Monitor },
   ];
 
-  const handleClearFavorites = () => {
+  const handleClearData = () => {
     try {
       localStorage.removeItem('plan-b-favorites');
       localStorage.removeItem('plan-b-movie-favorites');
+      localStorage.removeItem('plan-b-channel-history');
+      
       toast({
         title: (
           <div className="flex items-start gap-3">
             <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-foreground">Favoritos eliminados</p>
+              <p className="font-semibold text-foreground">Datos de la aplicación eliminados</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Los datos de tus favoritos han sido borrados.
+                Tus favoritos e historial de vistas han sido borrados.
               </p>
             </div>
           </div>
         ),
       });
+      // Give user time to read the toast before reloading
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
-      console.error("Failed to clear favorites from localStorage", error);
+      console.error("Failed to clear app data from localStorage", error);
       toast({
         variant: "destructive",
         title: (
@@ -306,32 +209,14 @@ export default function SettingsPage() {
                 </Button>
             )}
           </SettingsRow>
-           <SettingsRow
-            title="Notificaciones"
-            description="Recibe avisos sobre partidos importantes y novedades."
-          >
-             <div className="flex items-center space-x-2">
-                <Switch
-                  id="notifications-switch"
-                  checked={isNotificationsEnabled}
-                  onCheckedChange={handleNotificationToggle}
-                  disabled={isSubscribing}
-                  aria-label="Toggle push notifications"
-                />
-                <Label htmlFor="notifications-switch" className="flex items-center gap-2">
-                    {isNotificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-                    <span>{isNotificationsEnabled ? "Activadas" : "Desactivadas"}</span>
-                </Label>
-            </div>
-          </SettingsRow>
         </section>
 
         <section className="space-y-6">
           <h2 className="text-2xl font-semibold tracking-tight">Datos</h2>
            <Separator />
           <SettingsRow
-            title="Borrar favoritos"
-            description="Elimina todos los canales y películas guardados como favoritos en este dispositivo."
+            title="Borrar datos de navegación"
+            description="Elimina favoritos e historial de canales guardados en este dispositivo."
           >
              <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -344,14 +229,14 @@ export default function SettingsPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Esta acción es irreversible. Todos tus canales y películas favoritas serán eliminados de este dispositivo.
+                      Esta acción es irreversible. Todos tus favoritos (canales y películas) y tu historial de visualización de canales serán eliminados de este dispositivo.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      onClick={handleClearFavorites}
+                      onClick={handleClearData}
                     >
                       Sí, borrar todo
                     </AlertDialogAction>

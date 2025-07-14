@@ -1,7 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useMemo } from 'react';
-import type { ReactNode } from 'react';
+import * as React from 'react';
 
 type FilterContextType = {
   searchTerm: string;
@@ -11,19 +10,19 @@ type FilterContextType = {
   allCategories: string[];
 };
 
-const FilterContext = createContext<FilterContextType | undefined>(undefined);
+const FilterContext = React.createContext<FilterContextType | undefined>(undefined);
 
 export function ChannelFilterProvider({
   children,
   initialCategories = [],
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
   initialCategories: string[];
 }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Todos');
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [selectedCategory, setSelectedCategory] = React.useState('Todos');
 
-  const allCategories = useMemo(() => ['Todos', ...initialCategories], [initialCategories]);
+  const allCategories = React.useMemo(() => ['Todos', ...initialCategories], [initialCategories]);
 
   const value = {
     searchTerm,
@@ -37,7 +36,7 @@ export function ChannelFilterProvider({
 }
 
 export function useChannelFilters() {
-  const context = useContext(FilterContext);
+  const context = React.useContext(FilterContext);
   if (context === undefined) {
     throw new Error('useChannelFilters must be used within a ChannelFilterProvider');
   }

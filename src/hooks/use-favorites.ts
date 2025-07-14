@@ -11,12 +11,16 @@ export function useFavorites() {
   useEffect(() => {
     try {
       const storedFavorites = localStorage.getItem(FAVORITES_KEY);
-      if (storedFavorites) {
-        setFavorites(JSON.parse(storedFavorites));
+      // Professional check: Ensure data is a valid JSON array string before parsing
+      if (storedFavorites && storedFavorites !== 'undefined' && storedFavorites !== 'null') {
+        const parsedFavorites = JSON.parse(storedFavorites);
+        if (Array.isArray(parsedFavorites)) {
+          setFavorites(parsedFavorites);
+        }
       }
     } catch (error) {
       console.error("Error loading favorites from localStorage", error);
-      setFavorites([]);
+      setFavorites([]); // Reset on error
     } finally {
       setIsLoaded(true);
     }
