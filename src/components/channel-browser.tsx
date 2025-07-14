@@ -1,10 +1,12 @@
+
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { Channel } from "@/types";
 import ChannelCard from "./channel-card";
 import { Film } from "lucide-react";
 import { useChannelFilters } from "@/hooks/use-channel-filters";
+import { useChannelHistory } from "@/hooks/use-channel-history";
 
 type ChannelBrowserProps = {
   channels: Channel[];
@@ -14,6 +16,13 @@ export default function ChannelBrowser({
   channels,
 }: ChannelBrowserProps) {
   const { searchTerm, selectedCategory } = useChannelFilters();
+  const { viewCounts, isLoaded } = useChannelHistory();
+  const [clientChannels, setClientChannels] = useState<Channel[]>(channels);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const filteredChannels = useMemo(() => {
     return channels.filter((channel) => {
@@ -27,11 +36,25 @@ export default function ChannelBrowser({
     });
   }, [channels, searchTerm, selectedCategory]);
 
+  useEffect(() => {
+    if (isLoaded && isMounted) {
+      const sorted = [...filteredChannels].sort((a, b) => {
+        const countA = viewCounts[a.id] || 0;
+        const countB = viewCounts[b.id] || 0;
+        return countB - countA;
+      });
+      setClientChannels(sorted);
+    } else {
+      setClientChannels(filteredChannels);
+    }
+  }, [filteredChannels, viewCounts, isLoaded, isMounted]);
+
+
   return (
     <div className="space-y-8">
-      {filteredChannels.length > 0 ? (
+      {clientChannels.length > 0 ? (
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {filteredChannels.map((channel, index) => (
+          {clientChannels.map((channel, index) => (
             <ChannelCard key={channel.id} channel={channel} index={index} />
           ))}
         </div>

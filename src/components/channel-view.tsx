@@ -3,11 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Heart, SwitchCamera, VideoOff, Loader2 } from "lucide-react";
-import { useState, useMemo, memo } from "react";
+import { useState, useMemo, memo, useEffect } from "react";
 import dynamic from 'next/dynamic';
 
 import type { Channel } from "@/types";
 import { useFavorites } from "@/hooks/use-favorites";
+import { useChannelHistory } from "@/hooks/use-channel-history";
 import { Button } from "@/components/ui/button";
 import ChannelCard from "@/components/channel-card";
 import { Separator } from "@/components/ui/separator";
@@ -59,14 +60,24 @@ const getStreamableUrl = (url: string): string => {
     return url;
   };
 
+type ChannelViewProps = {
+  channel: Channel;
+  relatedChannels: Channel[];
+};
 
 const ChannelView = memo(function ChannelView({ channel, relatedChannels }: ChannelViewProps) {
-  const { isFavorite, addFavorite, removeFavorite, isLoaded } = useFavorites();
+  const { isFavorite, addFavorite, removeFavorite, isLoaded: favoritesAreLoaded } = useFavorites();
+  const { recordView } = useChannelHistory();
   const { toast } = useToast();
 
   const [currentStreamIndex, setCurrentStreamIndex] = useState(0);
 
-  const isFav = isLoaded ? isFavorite(channel.id) : false;
+  // Record a view for this channel when the component loads
+  useEffect(() => {
+    recordView(channel.id);
+  }, [channel.id, recordView]);
+
+  const isFav = favoritesAreLoaded ? isFavorite(channel.id) : false;
   
   const streamLinks = useMemo(
     () => (channel.streamUrl || []).map(getStreamableUrl),
@@ -128,7 +139,7 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
           </div>
         </div>
         <div className="flex items-center gap-2">
-            {isLoaded ? (
+            {favoritesAreLoaded ? (
                  <Button
                     variant={isFav ? "default" : "outline"}
                     size="icon"
