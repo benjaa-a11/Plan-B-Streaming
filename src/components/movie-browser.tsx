@@ -1,63 +1,108 @@
+
 "use client";
 
 import { useMemo, useEffect } from "react";
 import type { Movie } from "@/types";
-import MovieCard from "./movie-card";
-import { Clapperboard } from "lucide-react";
 import { useMovieFilters } from "@/hooks/use-movie-filters";
+import MovieShelf from "./movie-shelf";
+import MovieHero from "./movie-hero";
+import { cn } from "@/lib/utils";
+import MovieCard from "./movie-card";
 
 type MovieBrowserProps = {
   movies: Movie[];
+  isHomePage?: boolean;
+};
+
+type MoviesByCategory = {
+  [category: string]: Movie[];
 };
 
 export default function MovieBrowser({
   movies,
+  isHomePage = false,
 }: MovieBrowserProps) {
   const { searchTerm, selectedCategory, setSearchTerm, setSelectedCategory } = useMovieFilters();
 
   // Reset the filters every time the user navigates to this page.
-  // This ensures they are always greeted with the full movie catalog,
-  // providing a consistent and predictable user experience.
   useEffect(() => {
-    setSelectedCategory('Todos');
-    setSearchTerm('');
-  }, [setSelectedCategory, setSearchTerm]);
+    if (!isHomePage) {
+      setSelectedCategory('Todos');
+      setSearchTerm('');
+    }
+  }, [setSelectedCategory, setSearchTerm, isHomePage]);
 
-  const filteredMovies = useMemo(() => {
-    return movies.filter((movie) => {
-      if (!movie) return false;
+  const { heroMovies, byCategory, allMoviesFiltered } = useMemo(() => {
+    const filtered = isHomePage ? movies : movies.filter((movie) => 
+        (movie.title?.toLowerCase() ?? "").includes(searchTerm.toLowerCase())
+    );
 
-      const matchesSearch =
-        (movie.title?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
-        (movie.synopsis?.toLowerCase() ?? "").includes(searchTerm.toLowerCase());
-      
-      const matchesCategory =
-        selectedCategory === 'Todos' ||
-        (Array.isArray(movie.category) && movie.category.includes(selectedCategory));
+    const heroMovies = movies.filter(m => m.isHero).slice(0, 4);
+    
+    let categories: MoviesByCategory = {};
+    if (!isHomePage && selectedCategory !== 'Todos') {
+        categories = {
+            [selectedCategory]: filtered.filter(movie => movie.category?.includes(selectedCategory))
+        };
+    } else {
+        categories = filtered.reduce<MoviesByCategory>((acc, movie) => {
+            if (movie.category && movie.category.length > 0) {
+                movie.category.forEach(cat => {
+                    if (!acc[cat]) acc[cat] = [];
+                    acc[cat].push(movie);
+                });
+            }
+            return acc;
+        }, {});
+    }
 
-      return matchesSearch && matchesCategory;
-    });
-  }, [movies, searchTerm, selectedCategory]);
+    return { 
+      heroMovies,
+      byCategory: categories,
+      allMoviesFiltered: filtered,
+    };
+  }, [movies, searchTerm, selectedCategory, isHomePage]);
+  
+  const categories = useMemo(() => {
+      if (searchTerm) {
+          return []; // Do not show categories when searching
+      }
+      return Object.keys(byCategory).sort();
+  }, [byCategory, searchTerm]);
 
   return (
-    <div className="space-y-8">
-      {filteredMovies.length > 0 ? (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {filteredMovies.map((movie, index) => (
-            <MovieCard key={movie.id} movie={movie} index={index} />
-          ))}
+    <div className="w-full relative bg-background text-foreground">
+        {!isHomePage && heroMovies.length > 0 && selectedCategory === 'Todos' && searchTerm === '' && (
+            <MovieHero movies={heroMovies} />
+        )}
+        
+        <div className={cn(
+            "space-y-12",
+            isHomePage ? "pt-8" : "pt-8 pb-12",
+            !isHomePage && "container mx-auto px-4 sm:px-6 lg:px-8"
+        )}>
+            {searchTerm ? (
+                 <div className="space-y-4">
+                    <h2 className="text-xl font-bold tracking-tight">Resultados de "{searchTerm}"</h2>
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+                      {allMoviesFiltered.map((movie, index) => (
+                          <div key={movie.id} className="w-full shrink-0">
+                            <MovieCard movie={movie} index={index} />
+                          </div>
+                      ))}
+                    </div>
+                </div>
+            ) : (
+                categories.map((category, index) => (
+                    <MovieShelf 
+                        key={category}
+                        title={category}
+                        movies={byCategory[category]}
+                        animationDelay={index * 100}
+                    />
+                ))
+            )}
         </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 py-20 text-center">
-            <Clapperboard className="w-16 h-16 text-muted-foreground/50 mb-4" />
-          <h3 className="text-2xl font-semibold text-foreground">
-            No se encontraron películas
-          </h3>
-          <p className="mt-2 text-muted-foreground max-w-sm">
-            Prueba a cambiar la categoría o utiliza un término de búsqueda diferente.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

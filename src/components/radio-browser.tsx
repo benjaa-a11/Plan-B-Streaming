@@ -11,11 +11,6 @@ type RadioBrowserProps = {
 export default function RadioBrowser({ radios }: RadioBrowserProps) {
   return (
     <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Radios en Vivo</h1>
-        <p className="mt-1 text-md sm:text-lg text-muted-foreground max-w-2xl mx-auto">Sintoniza tus estaciones favoritas.</p>
-      </div>
-
       {radios.length > 0 ? (
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {radios.map((radio, index) => (

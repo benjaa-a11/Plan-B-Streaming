@@ -13,7 +13,7 @@ const MovieCard = memo(function MovieCard({ movie, index = 0 }: MovieCardProps) 
   return (
     <Link 
       href={`/pelicula/${movie.id}`} 
-      className="group relative block overflow-hidden rounded-xl border bg-card shadow-sm transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-0 animate-fade-in-up"
+      className="group relative block overflow-hidden rounded-lg border-2 border-transparent bg-card shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-0 animate-fade-in-up"
       title={movie.title}
       style={{ animationDelay: `${index * 40}ms` }}
     >
@@ -31,18 +31,10 @@ const MovieCard = memo(function MovieCard({ movie, index = 0 }: MovieCardProps) 
           alt={`Póster de ${movie.title}`}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1200px) 25vw, 20vw"
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          className="object-cover transition-transform duration-300"
           data-ai-hint="movie poster"
           priority={index < 8}
         />
-      </div>
-      <div className="p-3">
-        <h3 className="font-semibold text-foreground truncate">
-          {movie.title}
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          {movie.year}
-        </p>
       </div>
     </Link>
   );

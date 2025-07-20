@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/select";
 import { Search, ListFilter, Settings, Heart, Popcorn, Radio } from "lucide-react";
 import { useChannelFilters } from "@/hooks/use-channel-filters";
-import { useMovieFilters } from "@/hooks/use-movie-filters";
 import { useState, useEffect } from "react";
 
 const Logo = () => (
@@ -69,56 +69,11 @@ function ChannelFilters() {
   );
 }
 
-function MovieFilters() {
-  const {
-    searchTerm,
-    setSearchTerm,
-    selectedCategory,
-    setSelectedCategory,
-    allCategories,
-  } = useMovieFilters();
-
-  return (
-    <div className="flex w-full items-center gap-2 max-w-md mx-auto">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Buscar película..."
-          className="pl-10 h-10 w-full text-sm bg-muted border-transparent focus:bg-background focus:border-input"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          aria-label="Buscar película"
-        />
-      </div>
-
-      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-        <SelectTrigger
-          className="h-10 w-10 shrink-0 p-0 flex items-center justify-center bg-muted border-transparent hover:bg-accent/50 focus:bg-background focus:border-input"
-          aria-label="Filtrar por categoría"
-        >
-          <ListFilter className="h-5 w-5 text-muted-foreground" />
-        </SelectTrigger>
-        <SelectContent>
-          {allCategories.map((category) => (
-            <SelectItem key={category} value={category}>
-              {category}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
 const HeaderContent = () => {
   const pathname = usePathname();
 
   if (pathname === "/") {
     return <ChannelFilters />;
-  }
-  if (pathname.startsWith('/peliculas')) {
-    return <MovieFilters />;
   }
   if (pathname.startsWith('/radio')) {
     return (
@@ -155,7 +110,12 @@ export default function Header() {
     setIsClient(true);
   }, []);
 
-  const pagesWithLogo = ["/", "/peliculas", "/radio"];
+  const pagesWithLogo = ["/", "/radio"];
+
+  // The header is no longer rendered on /peliculas, as it has its own custom header.
+  if (pathname.startsWith('/peliculas')) {
+    return null;
+  }
 
   if (!isClient) {
     return <header className="sticky top-0 z-40 w-full h-16 border-b border-border/40 bg-background/95 backdrop-blur-sm pt-safe-top" />;
