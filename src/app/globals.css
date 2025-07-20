@@ -67,3 +67,11 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  @media (max-width: 768px) {
+    body {
+      @apply scrollbar-hide;
+    }
+  }
+}

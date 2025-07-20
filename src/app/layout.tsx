@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { getCategories, getMovieCategories } from "@/lib/actions";
 import { Providers } from "@/components/providers";
 import { Analytics } from "@vercel/analytics/next";
+import { cookies } from "next/headers";
+import { decrypt } from "./lib/session";
 
 const fontInter = Inter({
   subsets: ['latin'],
@@ -45,8 +47,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const channelCategories = await getCategories();
-  const movieCategories = await getMovieCategories();
+  const [channelCategories, movieCategories] = await Promise.all([
+    getCategories(),
+    getMovieCategories()
+  ]);
 
   return (
     <html lang="es" suppressHydrationWarning>

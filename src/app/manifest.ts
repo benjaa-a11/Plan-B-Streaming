@@ -7,7 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Tu alternativa para ver televisión en vivo.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#030617',
+    background_color: '#09090B',
+    theme_color: '#09090B',
     icons: [
       {
         src: '/android-chrome-192x192.png',
