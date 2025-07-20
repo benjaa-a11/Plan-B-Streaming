@@ -4,7 +4,7 @@
 import { cache } from "react";
 import { db } from "./firebase";
 import { collection, getDocs, doc, getDoc, query, where, documentId, Timestamp, collectionGroup } from "firebase/firestore";
-import type { Channel, Match, ChannelOption, Movie, Radio, Tournament, Team } from "@/types";
+import type { Channel, Match, ChannelOption, Movie, Radio, Tournament, Team, AppStatus } from "@/types";
 import { placeholderChannels, placeholderMovies, placeholderRadios, placeholderTournaments, placeholderTeams } from "./placeholder-data";
 
 // Helper function to resolve .pls file to an actual stream URL
@@ -320,11 +320,13 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP_BASE_URL = "https://image.tmdb.org/t/p/w1280";
+const TMDB_LOGO_BASE_URL = "https://image.tmdb.org/t/p/w500";
+
 
 const _fetchTMDbData = cache(async (tmdbID: string) => {
   // The key is checked before this function is called, so we can assume it exists.
   try {
-    const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}?api_key=${TMDB_API_KEY}&language=es-ES`);
+    const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}?api_key=${TMDB_API_KEY}&language=es-ES&append_to_response=images`);
     if (!response.ok) {
       console.error(`Error fetching TMDb data for ${tmdbID}: ${response.statusText}`);
       return null;
@@ -384,7 +386,11 @@ const _fetchTMDbVideos = cache(async (tmdbID: string) => {
 });
 
 
-const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Movie | null> => {
+const _enrichMovieData = async (
+    docId: string, 
+    firestoreMovie: any,
+    tmdbLists?: { trendingIds: Set<string>; topRatedIds: Set<string> }
+): Promise<Movie | null> => {
   const [tmdbMovieData, tmdbCreditsData, tmdbVideoUrl] = firestoreMovie.tmdbID
     ? await Promise.all([
         _fetchTMDbData(firestoreMovie.tmdbID),
@@ -394,29 +400,33 @@ const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Mov
     : [null, null, null];
   
   const title = firestoreMovie.title || tmdbMovieData?.title;
-  // If no title can be determined, the movie data is incomplete. Skip it.
   if (!title) {
     console.warn(`Skipping movie with docId ${docId} because a title could not be determined.`);
     return null;
   }
 
-  // Professional safeguard for posterUrl to prevent empty strings.
   let posterUrl = '';
-  // 1. Prioritize user-provided URL if it's a valid, non-empty string.
   if (firestoreMovie.posterUrl && firestoreMovie.posterUrl.trim().length > 0) {
       posterUrl = firestoreMovie.posterUrl;
   } 
-  // 2. Fallback to TMDb if available.
   else if (tmdbMovieData && tmdbMovieData.poster_path) {
       posterUrl = `${TMDB_IMAGE_BASE_URL}${tmdbMovieData.poster_path}`;
   }
 
-  // 3. Ultimate fallback to a placeholder to guarantee a valid src for images.
   if (!posterUrl) {
       posterUrl = 'https://placehold.co/500x750.png';
   }
 
-  const backdropUrl = tmdbMovieData?.backdrop_path ? `${TMDB_BACKDROP_BASE_URL}${tmdbMovieData.backdrop_path}` : undefined;
+  const backdropUrl = firestoreMovie.heroImageUrl || (tmdbMovieData?.backdrop_path ? `${TMDB_BACKDROP_BASE_URL}${tmdbMovieData.backdrop_path}` : undefined);
+  
+  // Find the best logo
+  const logos = tmdbMovieData?.images?.logos || [];
+  const spanishLogo = logos.find((logo: any) => logo.iso_639_1 === 'es');
+  const englishLogo = logos.find((logo: any) => logo.iso_639_1 === 'en');
+  const anyLogo = logos[0];
+  const bestLogo = spanishLogo || englishLogo || anyLogo;
+  const logoUrl = bestLogo ? `${TMDB_LOGO_BASE_URL}${bestLogo.file_path}` : undefined;
+
   const synopsis = firestoreMovie.synopsis || tmdbMovieData?.overview || '';
   const year = firestoreMovie.year || (tmdbMovieData?.release_date ? parseInt(tmdbMovieData.release_date.split('-')[0], 10) : undefined);
   const category = firestoreMovie.category || tmdbMovieData?.genres?.map((g: any) => g.name) || [];
@@ -431,7 +441,7 @@ const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Mov
   const director = firestoreMovie.director || tmdbCreditsData?.crew?.find((p: any) => p.job === 'Director')?.name;
   const actors = firestoreMovie.actors || tmdbCreditsData?.cast?.slice(0, 3).map((p: any) => p.name).join(', ');
   const rating = firestoreMovie.rating || (tmdbMovieData?.vote_average ? tmdbMovieData.vote_average.toFixed(1) : undefined);
-
+  
   return {
     id: docId,
     tmdbID: firestoreMovie.tmdbID,
@@ -441,6 +451,7 @@ const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Mov
     title,
     posterUrl,
     backdropUrl,
+    logoUrl,
     synopsis,
     year,
     category,
@@ -448,9 +459,13 @@ const _enrichMovieData = async (docId: string, firestoreMovie: any): Promise<Mov
     director,
     actors,
     rating,
+    isTrending: tmdbLists?.trendingIds.has(String(firestoreMovie.tmdbID)),
+    isTopRated: tmdbLists?.topRatedIds.has(String(firestoreMovie.tmdbID)),
+    popularity: tmdbMovieData?.popularity,
+    isHero: firestoreMovie.isHero,
+    heroImageUrl: firestoreMovie.heroImageUrl,
   };
 };
-
 
 const useMovieFallbackData = (includePlaceholders: boolean) => {
   if (includePlaceholders) {
@@ -460,10 +475,22 @@ const useMovieFallbackData = (includePlaceholders: boolean) => {
   return [];
 };
 
+const _fetchTMDbList = cache(async (endpoint: string): Promise<Set<string>> => {
+    if (!TMDB_API_KEY) return new Set();
+    try {
+        const res = await fetch(`${TMDB_BASE_URL}${endpoint}?api_key=${TMDB_API_KEY}&language=es-ES&page=1`);
+        if (!res.ok) return new Set();
+        const data = await res.json();
+        return new Set(data.results.map((m: any) => String(m.id)));
+    } catch (error) {
+        console.error(`Error fetching TMDb list ${endpoint}:`, error);
+        return new Set();
+    }
+});
+
+
 // Uncached version of getMovies to ensure data is always fresh
 export const getMovies = async (includePlaceholders = false): Promise<Movie[]> => {
-  // Professional Check: If TMDb API key is missing, don't even try.
-  // Immediately fall back to placeholder data to avoid errors and ensure a stable UI.
   if (!TMDB_API_KEY) {
     console.error("CRITICAL: La variable de entorno TMDB_API_KEY no está configurada. La sección de películas no funcionará.");
     return useMovieFallbackData(includePlaceholders);
@@ -477,10 +504,16 @@ export const getMovies = async (includePlaceholders = false): Promise<Movie[]> =
       return useMovieFallbackData(true);
     }
     
-    const moviePromises = movieSnapshot.docs.map(doc => _enrichMovieData(doc.id, doc.data()));
+    const [trendingIds, topRatedIds] = await Promise.all([
+      _fetchTMDbList('/movie/trending/week'),
+      _fetchTMDbList('/movie/top_rated'),
+    ]);
+
+    const moviePromises = movieSnapshot.docs.map(doc => 
+      _enrichMovieData(doc.id, doc.data(), { trendingIds, topRatedIds })
+    );
     const enrichedMovies = await Promise.all(moviePromises);
 
-    // Filter out any movies that failed to enrich properly (e.g., returned null)
     return enrichedMovies.filter((movie): movie is Movie => movie !== null);
 
   } catch (error) {
@@ -738,3 +771,24 @@ export const getTeams = async (includePlaceholders = false): Promise<Team[]> => 
         return useTeamFallbackData(includePlaceholders);
     }
 };
+
+
+// --- APP STATUS ---
+export const getAppStatus = cache(async (): Promise<AppStatus | null> => {
+  try {
+      const statusDoc = await getDoc(doc(db, "config", "app-status"));
+      if (statusDoc.exists()) {
+          return statusDoc.data() as AppStatus;
+      }
+      return null;
+  } catch (error) {
+      console.error("Error fetching app status:", error);
+      // Return a default "all enabled" status if there's an error
+      // This prevents the app from being locked out if the config doc is missing or there's a read error.
+      return {
+          isMaintenanceMode: false,
+          maintenanceMessage: '',
+          disabledSections: []
+      };
+  }
+});

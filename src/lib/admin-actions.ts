@@ -2,10 +2,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { db } from './firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, setDoc, getDoc, query, getDocs, Timestamp, deleteField, orderBy } from 'firebase/firestore';
+import { db } from './firebase'; // Use the client-side db instance
+import { collection, doc, addDoc, updateDoc, deleteDoc, setDoc, getDoc, query, getDocs, Timestamp, deleteField, orderBy, writeBatch } from 'firebase/firestore';
 import { z } from 'zod';
-import type { AdminAgendaMatch } from '@/types';
+import type { AdminAgendaMatch, AppStatus } from '@/types';
 
 // Common state type for forms
 export type FormState = {
@@ -40,33 +40,36 @@ const ChannelSchema = z.object({
   logoUrl: z.string().url({ message: 'Debe ser una URL de logo válida.' }),
   category: z.string().min(1, { message: 'La categoría es requerida.' }),
   description: z.string().optional(),
-  streamUrl: z.array(z.string().url({ message: 'Cada URL de stream debe ser válida.' })).min(1, { message: 'Se requiere al menos una URL de stream.' }),
+  streamUrl: z.array(z.string().url({ message: 'URL no válida.' })).min(1, { message: 'Se requiere al menos una URL de stream.' })
+    .refine(urls => urls.every(url => url.trim().length > 0), { message: 'Ninguna URL puede estar vacía.' }),
   isHidden: z.boolean().optional(),
 });
 
 export async function addChannel(prevState: FormState, formData: FormData): Promise<FormState> {
-  const rawData = Object.fromEntries(formData.entries());
-  const processedData = {
-    ...rawData,
-    streamUrl: (rawData.streamUrl as string).split(',').map(url => url.trim()).filter(Boolean),
-    isHidden: rawData.isHidden === 'on',
-  };
-
-  const validatedFields = ChannelSchema.safeParse(processedData);
-  
-  if (!validatedFields.success) {
-    return {
-      message: 'Error de validación. Por favor, corrija los campos.',
-      errors: validatedFields.error.flatten().fieldErrors,
-      success: false,
-    };
-  }
-  
-  const { name } = validatedFields.data;
-  const id = slugify(name);
-  const channelRef = doc(db, 'channels', id);
-
   try {
+    const rawData = {
+        name: formData.get('name'),
+        logoUrl: formData.get('logoUrl'),
+        category: formData.get('category'),
+        description: formData.get('description'),
+        streamUrl: formData.getAll('streamUrl[]').filter(Boolean),
+        isHidden: formData.get('isHidden') === 'on',
+    };
+
+    const validatedFields = ChannelSchema.safeParse(rawData);
+    
+    if (!validatedFields.success) {
+      return {
+        message: 'Error de validación. Por favor, corrija los campos.',
+        errors: validatedFields.error.flatten().fieldErrors,
+        success: false,
+      };
+    }
+    
+    const { name } = validatedFields.data;
+    const id = slugify(name);
+    const channelRef = doc(db, 'channels', id);
+
     const docSnap = await getDoc(channelRef);
     if (docSnap.exists()) {
       return { message: `Un canal con el ID '${id}' ya existe.`, success: false };
@@ -78,31 +81,34 @@ export async function addChannel(prevState: FormState, formData: FormData): Prom
     return { message: 'Canal añadido exitosamente.', success: true, errors: {} };
   } catch (error) {
     console.error('Error adding channel:', error);
-    return { message: 'Error del servidor al intentar añadir el canal.', success: false };
+    const message = error instanceof Error ? error.message : 'Error del servidor al intentar añadir el canal.';
+    return { message, success: false };
   }
 }
 
 export async function updateChannel(id: string, prevState: FormState, formData: FormData): Promise<FormState> {
   if (!id) return { message: 'ID de canal no proporcionado.', success: false };
   
-  const rawData = Object.fromEntries(formData.entries());
-  const processedData = {
-    ...rawData,
-    streamUrl: (rawData.streamUrl as string).split(',').map(url => url.trim()).filter(Boolean),
-    isHidden: rawData.isHidden === 'on',
-  };
-
-  const validatedFields = ChannelSchema.safeParse(processedData);
-
-  if (!validatedFields.success) {
-    return {
-      message: 'Error de validación. Por favor, corrija los campos.',
-      errors: validatedFields.error.flatten().fieldErrors,
-      success: false,
-    };
-  }
-
   try {
+     const rawData = {
+        name: formData.get('name'),
+        logoUrl: formData.get('logoUrl'),
+        category: formData.get('category'),
+        description: formData.get('description'),
+        streamUrl: formData.getAll('streamUrl[]').filter(Boolean),
+        isHidden: formData.get('isHidden') === 'on',
+    };
+
+    const validatedFields = ChannelSchema.safeParse(rawData);
+
+    if (!validatedFields.success) {
+      return {
+        message: 'Error de validación. Por favor, corrija los campos.',
+        errors: validatedFields.error.flatten().fieldErrors,
+        success: false,
+      };
+    }
+
     const channelRef = doc(db, 'channels', id);
     await updateDoc(channelRef, validatedFields.data);
     revalidatePath('/admin/channels');
@@ -111,7 +117,8 @@ export async function updateChannel(id: string, prevState: FormState, formData: 
     return { message: 'Canal actualizado exitosamente.', success: true, errors: {} };
   } catch (error) {
     console.error('Error updating channel:', error);
-    return { message: 'Error del servidor al intentar actualizar el canal.', success: false };
+    const message = error instanceof Error ? error.message : 'Error del servidor al intentar actualizar el canal.';
+    return { message, success: false };
   }
 }
 
@@ -125,7 +132,8 @@ export async function deleteChannel(id: string) {
     return { message: 'Canal eliminado exitosamente.', success: true };
   } catch (error) {
     console.error('Error deleting channel:', error);
-    return { message: 'Error del servidor al intentar eliminar el canal.', success: false };
+    const message = error instanceof Error ? error.message : 'Error del servidor al intentar eliminar el canal.';
+    return { message, success: false };
   }
 }
 
@@ -136,30 +144,32 @@ const RadioSchema = z.object({
   name: z.string().min(1, { message: 'El nombre es requerido.' }),
   logoUrl: z.string().url({ message: 'Debe ser una URL de logo válida.' }),
   emisora: z.string().optional(),
-  streamUrl: z.array(z.string().url({ message: 'Cada URL de stream debe ser válida.' })).min(1, { message: 'Se requiere al menos una URL de stream.' }),
+  streamUrl: z.array(z.string().url({ message: 'URL no válida.' })).min(1, { message: 'Se requiere al menos una URL de stream.' })
+    .refine(urls => urls.every(url => url.trim().length > 0), { message: 'Ninguna URL puede estar vacía.' }),
 });
 
 export async function addRadio(prevState: FormState, formData: FormData): Promise<FormState> {
-  const rawData = Object.fromEntries(formData.entries());
-  const processedData = {
-    ...rawData,
-    streamUrl: (rawData.streamUrl as string).split(',').map(url => url.trim()).filter(Boolean),
-  };
-  const validatedFields = RadioSchema.safeParse(processedData);
-  
-  if (!validatedFields.success) {
-    return {
-      message: 'Error de validación.',
-      errors: validatedFields.error.flatten().fieldErrors,
-      success: false,
-    };
-  }
-  
-  const { name } = validatedFields.data;
-  const id = slugify(name);
-  const radioRef = doc(db, 'radio', id);
-
   try {
+    const rawData = {
+        name: formData.get('name'),
+        logoUrl: formData.get('logoUrl'),
+        emisora: formData.get('emisora'),
+        streamUrl: formData.getAll('streamUrl[]').filter(Boolean),
+    };
+    const validatedFields = RadioSchema.safeParse(rawData);
+    
+    if (!validatedFields.success) {
+      return {
+        message: 'Error de validación.',
+        errors: validatedFields.error.flatten().fieldErrors,
+        success: false,
+      };
+    }
+    
+    const { name } = validatedFields.data;
+    const id = slugify(name);
+    const radioRef = doc(db, 'radio', id);
+
     const docSnap = await getDoc(radioRef);
     if (docSnap.exists()) {
       return { message: `Una radio con el ID '${id}' ya existe.`, success: false };
@@ -171,38 +181,41 @@ export async function addRadio(prevState: FormState, formData: FormData): Promis
     return { message: 'Radio añadida exitosamente.', success: true, errors: {} };
   } catch (error) {
     console.error('Error adding radio:', error);
-    return { message: 'Error del servidor al intentar añadir la radio.', success: false };
+    const message = error instanceof Error ? error.message : 'Error del servidor al intentar añadir la radio.';
+    return { message, success: false };
   }
 }
 
 export async function updateRadio(id: string, prevState: FormState, formData: FormData): Promise<FormState> {
    if (!id) return { message: 'ID de radio no proporcionado.', success: false };
    
-   const rawData = Object.fromEntries(formData.entries());
-   const processedData = {
-     ...rawData,
-     streamUrl: (rawData.streamUrl as string).split(',').map(url => url.trim()).filter(Boolean),
-   };
-   const validatedFields = RadioSchema.safeParse(processedData);
-
-   if (!validatedFields.success) {
-     return {
-       message: 'Error de validación.',
-       errors: validatedFields.error.flatten().fieldErrors,
-       success: false,
-     };
-   }
-
    try {
-     const radioRef = doc(db, 'radio', id);
-     await updateDoc(radioRef, validatedFields.data);
-     revalidatePath('/admin/radios');
-     revalidatePath('/radio');
-     revalidatePath(`/radio/${id}`);
-     return { message: 'Radio actualizada exitosamente.', success: true, errors: {} };
-   } catch (error) {
+    const rawData = {
+        name: formData.get('name'),
+        logoUrl: formData.get('logoUrl'),
+        emisora: formData.get('emisora'),
+        streamUrl: formData.getAll('streamUrl[]').filter(Boolean),
+    };
+    const validatedFields = RadioSchema.safeParse(rawData);
+
+    if (!validatedFields.success) {
+      return {
+        message: 'Error de validación.',
+        errors: validatedFields.error.flatten().fieldErrors,
+        success: false,
+      };
+    }
+
+    const radioRef = doc(db, 'radio', id);
+    await updateDoc(radioRef, validatedFields.data);
+    revalidatePath('/admin/radios');
+    revalidatePath('/radio');
+    revalidatePath(`/radio/${id}`);
+    return { message: 'Radio actualizada exitosamente.', success: true, errors: {} };
+  } catch (error) {
      console.error('Error updating radio:', error);
-     return { message: 'Error del servidor al intentar actualizar la radio.', success: false };
+     const message = error instanceof Error ? error.message : 'Error del servidor al intentar actualizar la radio.';
+     return { message, success: false };
    }
 }
 
@@ -216,7 +229,8 @@ export async function deleteRadio(id: string) {
     return { message: 'Radio eliminada exitosamente.', success: true };
   } catch (error) {
     console.error('Error deleting radio:', error);
-    return { message: 'Error del servidor al intentar eliminar la radio.', success: false };
+    const message = error instanceof Error ? error.message : 'Error del servidor al intentar eliminar la radio.';
+    return { message, success: false };
   }
 }
 
@@ -228,44 +242,50 @@ const MovieSchema = z.object({
   format: z.enum(['mp4', 'iframe'], { required_error: 'Debe seleccionar un formato.' }),
   title: z.string().optional(),
   posterUrl: z.string().url('URL de póster no válida').optional().or(z.literal('')),
+  heroImageUrl: z.string().url('URL de imagen para hero no válida').optional().or(z.literal('')),
   synopsis: z.string().optional(),
+  isHero: z.boolean().optional(),
 });
 
+
 export async function addMovie(prevState: FormState, formData: FormData): Promise<FormState> {
-    const rawData = Object.fromEntries(formData.entries());
-    const validatedFields = MovieSchema.safeParse(rawData);
-
-    if (!validatedFields.success) {
-        return {
-            message: 'Error de validación.',
-            errors: validatedFields.error.flatten().fieldErrors,
-            success: false,
-        };
-    }
-    
-    let { tmdbID, streamUrl, format, title, posterUrl, synopsis } = validatedFields.data;
-    let finalTitle = title; 
-
-    if (!finalTitle) {
-        if (!TMDB_API_KEY) {
-            return { message: 'La clave de API de TMDb no está configurada. Se requiere un título.', success: false };
-        }
-        try {
-            const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}?api_key=${TMDB_API_KEY}&language=es-ES`);
-            if (!response.ok) throw new Error('Failed to fetch movie title from TMDb');
-            const movieData = await response.json();
-            finalTitle = movieData.title;
-            if (!finalTitle) throw new Error('No se pudo obtener el título de TMDb');
-        } catch (error) {
-             console.error("Error fetching title from TMDb:", error);
-             return { message: 'No se pudo obtener el título de TMDb. Por favor, añádelo manualmente.', success: false };
-        }
-    }
-    
-    const id = slugify(finalTitle);
-    const movieRef = doc(db, 'peliculas', id);
-
     try {
+        const rawData = {
+          ...Object.fromEntries(formData.entries()),
+          isHero: formData.get('isHero') === 'on',
+        };
+        const validatedFields = MovieSchema.safeParse(rawData);
+
+        if (!validatedFields.success) {
+            return {
+                message: 'Error de validación.',
+                errors: validatedFields.error.flatten().fieldErrors,
+                success: false,
+            };
+        }
+        
+        let { tmdbID, streamUrl, format, title, posterUrl, synopsis, isHero, heroImageUrl } = validatedFields.data;
+        let finalTitle = title; 
+
+        if (!finalTitle) {
+            if (!TMDB_API_KEY) {
+                return { message: 'La clave de API de TMDb no está configurada. Se requiere un título.', success: false };
+            }
+            try {
+                const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbID}?api_key=${TMDB_API_KEY}&language=es-ES`);
+                if (!response.ok) throw new Error('Failed to fetch movie title from TMDb');
+                const movieData = await response.json();
+                finalTitle = movieData.title;
+                if (!finalTitle) throw new Error('No se pudo obtener el título de TMDb');
+            } catch (error) {
+                console.error("Error fetching title from TMDb:", error);
+                return { message: 'No se pudo obtener el título de TMDb. Por favor, añádelo manualmente.', success: false };
+            }
+        }
+        
+        const id = slugify(finalTitle);
+        const movieRef = doc(db, 'peliculas', id);
+
         const docSnap = await getDoc(movieRef);
         if (docSnap.exists()) {
           return { message: `Una película con el ID '${id}' (del título '${finalTitle}') ya existe.`, success: false };
@@ -275,11 +295,13 @@ export async function addMovie(prevState: FormState, formData: FormData): Promis
             tmdbID,
             streamUrl,
             format,
+            isHero,
         };
         
         if (title) dataToSave.title = title;
         if (posterUrl) dataToSave.posterUrl = posterUrl;
         if (synopsis) dataToSave.synopsis = synopsis;
+        if (heroImageUrl) dataToSave.heroImageUrl = heroImageUrl;
 
         await setDoc(movieRef, dataToSave);
         revalidatePath('/admin/movies');
@@ -287,35 +309,41 @@ export async function addMovie(prevState: FormState, formData: FormData): Promis
         return { message: 'Película añadida exitosamente.', success: true, errors: {} };
     } catch (error) {
         console.error('Error adding movie:', error);
-        return { message: 'Error del servidor al intentar añadir la película.', success: false };
+        const message = error instanceof Error ? error.message : 'Error del servidor al intentar añadir la película.';
+        return { message, success: false };
     }
 }
 
 export async function updateMovie(id: string, prevState: FormState, formData: FormData): Promise<FormState> {
     if (!id) return { message: 'ID de película no proporcionado.', success: false };
-
-    const validatedFields = MovieSchema.safeParse(Object.fromEntries(formData.entries()));
-
-    if (!validatedFields.success) {
-        return {
-            message: 'Error de validación.',
-            errors: validatedFields.error.flatten().fieldErrors,
-            success: false,
-        };
-    }
-
-    const { tmdbID, streamUrl, format, title, posterUrl, synopsis } = validatedFields.data;
-    
-    const dataToUpdate: { [key: string]: any } = {
-        tmdbID,
-        streamUrl,
-        format,
-        title: title || deleteField(),
-        posterUrl: posterUrl || deleteField(),
-        synopsis: synopsis || deleteField(),
-    };
-
     try {
+        const rawData = {
+          ...Object.fromEntries(formData.entries()),
+          isHero: formData.get('isHero') === 'on',
+        };
+        const validatedFields = MovieSchema.safeParse(rawData);
+
+        if (!validatedFields.success) {
+            return {
+                message: 'Error de validación.',
+                errors: validatedFields.error.flatten().fieldErrors,
+                success: false,
+            };
+        }
+
+        const { tmdbID, streamUrl, format, title, posterUrl, synopsis, isHero, heroImageUrl } = validatedFields.data;
+        
+        const dataToUpdate: { [key: string]: any } = {
+            tmdbID,
+            streamUrl,
+            format,
+            isHero,
+            title: title || deleteField(),
+            posterUrl: posterUrl || deleteField(),
+            synopsis: synopsis || deleteField(),
+            heroImageUrl: heroImageUrl || deleteField(),
+        };
+
         const movieRef = doc(db, 'peliculas', id);
         await updateDoc(movieRef, dataToUpdate);
         revalidatePath('/admin/movies');
@@ -324,13 +352,13 @@ export async function updateMovie(id: string, prevState: FormState, formData: Fo
         return { message: 'Película actualizada exitosamente.', success: true, errors: {} };
     } catch (error) {
         console.error('Error updating movie:', error);
-        return { message: 'Error del servidor al intentar actualizar la película.', success: false };
+        const message = error instanceof Error ? error.message : 'Error del servidor al intentar actualizar la película.';
+        return { message, success: false };
     }
 }
 
 export async function deleteMovie(id: string) {
     if (!id) return { message: 'ID de película no proporcionado.', success: false };
-
     try {
         await deleteDoc(doc(db, 'peliculas', id));
         revalidatePath('/admin/movies');
@@ -338,7 +366,8 @@ export async function deleteMovie(id: string) {
         return { message: 'Película eliminada exitosamente.', success: true };
     } catch (error) {
         console.error('Error deleting movie:', error);
-        return { message: 'Error del servidor al intentar eliminar la película.', success: false };
+        const message = error instanceof Error ? error.message : 'Error del servidor al intentar eliminar la película.';
+        return { message, success: false };
     }
 }
 
@@ -352,53 +381,55 @@ const TournamentSchema = z.object({
 });
 
 export async function addTournament(prevState: FormState, formData: FormData): Promise<FormState> {
-  const validatedFields = TournamentSchema.safeParse(Object.fromEntries(formData.entries()));
-  
-  if (!validatedFields.success) {
-    return { message: 'Error de validación.', errors: validatedFields.error.flatten().fieldErrors, success: false };
-  }
-
-  const { tournamentId, name, logoUrlDark, logoUrlLight } = validatedFields.data;
-  const dataToSave = { id: tournamentId, name, logoUrl: [logoUrlDark, logoUrlLight].filter(Boolean) };
-  
-  const docId = slugify(name);
-  const tournamentRef = doc(db, 'tournaments', docId);
-
   try {
-     const docSnap = await getDoc(tournamentRef);
-    if (docSnap.exists()) {
-      return { message: `Un torneo con el ID '${docId}' ya existe.`, success: false };
+    const validatedFields = TournamentSchema.safeParse(Object.fromEntries(formData.entries()));
+    
+    if (!validatedFields.success) {
+      return { message: 'Error de validación.', errors: validatedFields.error.flatten().fieldErrors, success: false };
     }
 
-    await setDoc(tournamentRef, dataToSave);
-    revalidatePath('/admin/tournaments');
-    revalidatePath('/');
-    return { message: 'Torneo añadido exitosamente.', success: true, errors: {} };
+    const { tournamentId, name, logoUrlDark, logoUrlLight } = validatedFields.data;
+    const dataToSave = { id: tournamentId, name, logoUrl: [logoUrlDark, logoUrlLight].filter(Boolean) };
+    
+    const docId = slugify(name);
+    const tournamentRef = doc(db, 'tournaments', docId);
+
+    const docSnap = await getDoc(tournamentRef);
+      if (docSnap.exists()) {
+        return { message: `Un torneo con el ID '${docId}' ya existe.`, success: false };
+      }
+
+      await setDoc(tournamentRef, dataToSave);
+      revalidatePath('/admin/tournaments');
+      revalidatePath('/');
+      return { message: 'Torneo añadido exitosamente.', success: true, errors: {} };
   } catch (error) {
     console.error('Error adding tournament:', error);
-    return { message: 'Error del servidor al añadir el torneo.', success: false };
+    const message = error instanceof Error ? error.message : 'Error del servidor al añadir el torneo.';
+    return { message, success: false };
   }
 }
 
 export async function updateTournament(id: string, prevState: FormState, formData: FormData): Promise<FormState> {
     if (!id) return { message: 'ID de torneo no proporcionado.', success: false };
     
-    const validatedFields = TournamentSchema.safeParse(Object.fromEntries(formData.entries()));
-    if (!validatedFields.success) {
-        return { message: 'Error de validación.', errors: validatedFields.error.flatten().fieldErrors, success: false };
-    }
-    
-    const { tournamentId, name, logoUrlDark, logoUrlLight } = validatedFields.data;
-    const dataToSave = { id: tournamentId, name, logoUrl: [logoUrlDark, logoUrlLight].filter(Boolean) };
-
     try {
+        const validatedFields = TournamentSchema.safeParse(Object.fromEntries(formData.entries()));
+        if (!validatedFields.success) {
+            return { message: 'Error de validación.', errors: validatedFields.error.flatten().fieldErrors, success: false };
+        }
+        
+        const { tournamentId, name, logoUrlDark, logoUrlLight } = validatedFields.data;
+        const dataToSave = { id: tournamentId, name, logoUrl: [logoUrlDark, logoUrlLight].filter(Boolean) };
+
         await updateDoc(doc(db, 'tournaments', id), dataToSave);
         revalidatePath('/admin/tournaments');
         revalidatePath('/');
         return { message: 'Torneo actualizado exitosamente.', success: true, errors: {} };
     } catch (error) {
         console.error('Error updating tournament:', error);
-        return { message: 'Error del servidor al actualizar el torneo.', success: false };
+        const message = error instanceof Error ? error.message : 'Error del servidor al actualizar el torneo.';
+        return { message, success: false };
     }
 }
 
@@ -411,7 +442,8 @@ export async function deleteTournament(id: string) {
         return { message: 'Torneo eliminado exitosamente.', success: true };
     } catch (error) {
         console.error('Error deleting tournament:', error);
-        return { message: 'Error del servidor al eliminar el torneo.', success: false };
+        const message = error instanceof Error ? error.message : 'Error del servidor al eliminar el torneo.';
+        return { message, success: false };
     }
 }
 
@@ -424,20 +456,20 @@ const TeamSchema = z.object({
 });
 
 export async function addTeam(prevState: FormState, formData: FormData): Promise<FormState> {
-    const validatedFields = TeamSchema.safeParse(Object.fromEntries(formData.entries()));
-
-    if (!validatedFields.success) {
-        return { message: 'Error de validación.', errors: validatedFields.error.flatten().fieldErrors, success: false };
-    }
-    
-    const { name, country, logoUrl } = validatedFields.data;
-    const countrySlug = slugify(country);
-    const teamSlug = slugify(name);
-    
-    const teamPath = `teams/${countrySlug}/clubs/${teamSlug}`;
-    const teamRef = doc(db, teamPath);
-
     try {
+        const validatedFields = TeamSchema.safeParse(Object.fromEntries(formData.entries()));
+
+        if (!validatedFields.success) {
+            return { message: 'Error de validación.', errors: validatedFields.error.flatten().fieldErrors, success: false };
+        }
+        
+        const { name, country, logoUrl } = validatedFields.data;
+        const countrySlug = slugify(country);
+        const teamSlug = slugify(name);
+        
+        const teamPath = `teams/${countrySlug}/clubs/${teamSlug}`;
+        const teamRef = doc(db, teamPath);
+
         const docSnap = await getDoc(teamRef);
         if (docSnap.exists()) {
             return { message: `El equipo con ID '${teamSlug}' ya existe en ese país.`, success: false };
@@ -449,29 +481,31 @@ export async function addTeam(prevState: FormState, formData: FormData): Promise
         return { message: 'Equipo añadido exitosamente.', success: true };
     } catch (error) {
         console.error('Error adding team:', error);
-        return { message: 'Error del servidor al añadir el equipo.', success: false };
+        const message = error instanceof Error ? error.message : 'Error del servidor al añadir el equipo.';
+        return { message, success: false };
     }
 }
 
 export async function updateTeam(path: string, prevState: FormState, formData: FormData): Promise<FormState> {
     if (!path) return { message: 'Ruta del equipo no proporcionada.', success: false };
 
-    // When updating, we only care about logoUrl, as name and country define the path.
-    const UpdateSchema = TeamSchema.pick({ logoUrl: true });
-    const validatedFields = UpdateSchema.safeParse(Object.fromEntries(formData.entries()));
-
-    if (!validatedFields.success) {
-        return { message: 'Error de validación.', errors: validatedFields.error.flatten().fieldErrors, success: false };
-    }
-    
     try {
+        // When updating, we only care about logoUrl, as name and country define the path.
+        const UpdateSchema = TeamSchema.pick({ logoUrl: true });
+        const validatedFields = UpdateSchema.safeParse(Object.fromEntries(formData.entries()));
+
+        if (!validatedFields.success) {
+            return { message: 'Error de validación.', errors: validatedFields.error.flatten().fieldErrors, success: false };
+        }
+        
         await updateDoc(doc(db, path), validatedFields.data);
         revalidatePath('/admin/teams');
         revalidatePath('/');
         return { message: 'Equipo actualizado exitosamente.', success: true };
     } catch (error) {
         console.error('Error updating team:', error);
-        return { message: 'Error del servidor al actualizar el equipo.', success: false };
+        const message = error instanceof Error ? error.message : 'Error del servidor al actualizar el equipo.';
+        return { message, success: false };
     }
 }
 
@@ -485,7 +519,8 @@ export async function deleteTeam(path: string) {
         return { message: 'Equipo eliminado exitosamente.', success: true };
     } catch (error) {
         console.error('Error deleting team:', error);
-        return { message: 'Error del servidor al eliminar el equipo.', success: false };
+        const message = error instanceof Error ? error.message : 'Error del servidor al eliminar el equipo.';
+        return { message, success: false };
     }
 }
 
@@ -558,14 +593,15 @@ export async function deleteMatch(id: string) {
         return { message: 'Partido eliminado exitosamente.', success: true };
     } catch (error) {
         console.error("Error deleting match:", error);
-        return { message: 'Error del servidor al eliminar el partido.', success: false };
+        const message = error instanceof Error ? error.message : 'Error del servidor al eliminar el partido.';
+        return { message, success: false };
     }
 }
 
-// Action to fetch all agenda items for the admin panel
+// Action to fetch all agenda items for the admin panel, sorted chronologically.
 export async function getAdminAgenda(): Promise<AdminAgendaMatch[]> {
     try {
-        const agendaSnapshot = await getDocs(query(collection(db, "agenda"), orderBy("time", "desc")));
+        const agendaSnapshot = await getDocs(query(collection(db, "agenda"), orderBy("time", "asc")));
         const matches = agendaSnapshot.docs.map(doc => {
             const data = doc.data();
             const time = (data.time as Timestamp).toDate();
@@ -580,8 +616,6 @@ export async function getAdminAgenda(): Promise<AdminAgendaMatch[]> {
             } as AdminAgendaMatch
         });
         
-        // This is a simplified version for the admin panel.
-        // The page will fetch names separately for display.
         return matches;
 
     } catch (error) {
