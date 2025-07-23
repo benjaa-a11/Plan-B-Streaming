@@ -372,8 +372,22 @@ function MatchWizard({ match, onFormSubmit, teams, tournaments, channels }: Matc
     );
 }
 
+const getMatchStatus = (matchTime: Date): { text: string; variant: 'default' | 'destructive' | 'secondary' | 'outline' | null } => {
+    const now = new Date();
+    const matchEndTime = new Date(matchTime.getTime() + 180 * 60 * 1000); // 3 hours after start
+
+    if (now >= matchTime && now <= matchEndTime) {
+        return { text: 'EN VIVO', variant: 'destructive' };
+    }
+    if (now > matchEndTime) {
+        return { text: 'Finalizado', variant: 'secondary' };
+    }
+    return { text: 'Programado', variant: 'outline' };
+};
+
+
 function AdminAgendaCard({ match, onEdit, onDelete }: { match: AdminAgendaMatch; onEdit: (match: AdminAgendaMatch) => void; onDelete: (match: AdminAgendaMatch) => void; }) {
-    const isLive = match.time <= new Date() && new Date().getTime() - match.time.getTime() <= 180 * 60 * 1000;
+    const status = getMatchStatus(match.time);
     
     return (
         <Card className="opacity-0 animate-fade-in-up">
@@ -381,7 +395,7 @@ function AdminAgendaCard({ match, onEdit, onDelete }: { match: AdminAgendaMatch;
                 <div className="flex-1 space-y-2">
                     <div className="flex items-center justify-between">
                          <Badge variant="secondary">{match.tournamentName}</Badge>
-                         {isLive && <Badge variant="destructive" className="animate-pulse">EN VIVO</Badge>}
+                         <Badge variant={status.variant} className={cn(status.text === 'EN VIVO' && "animate-pulse")}>{status.text}</Badge>
                     </div>
                     <p className="font-semibold">{match.team1Name} vs {match.team2Name}</p>
                     <p className="text-sm text-muted-foreground">{format(match.time, 'dd/MM/yyyy HH:mm')} hs</p>
@@ -512,14 +526,14 @@ export default function AgendaDataTable({ data, teams, tournaments, channels }: 
           </TableHeader>
           <TableBody>
             {data && data.length > 0 ? data.map((match) => {
-               const isLive = match.time <= new Date() && new Date().getTime() - match.time.getTime() <= 180 * 60 * 1000;
+               const status = getMatchStatus(match.time);
                return (
                   <TableRow key={match.id} className="opacity-0 animate-fade-in-up">
                     <TableCell>{format(match.time, 'dd/MM/yy HH:mm')}</TableCell>
                     <TableCell className="font-medium">{match.team1Name} vs {match.team2Name}</TableCell>
                     <TableCell>{match.tournamentName}</TableCell>
                      <TableCell>
-                        {isLive && <Badge variant="destructive" className="animate-pulse">EN VIVO</Badge>}
+                        <Badge variant={status.variant} className={cn(status.text === 'EN VIVO' && "animate-pulse")}>{status.text}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className='inline-flex'>

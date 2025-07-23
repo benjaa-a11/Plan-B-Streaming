@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useActionState } from 'react';
+import { useState, useEffect, useActionState, useMemo } from 'react';
 import type { Radio } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useFormStatus } from 'react-dom';
 import { addRadio, updateRadio, deleteRadio } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertical } from 'lucide-react';
 import Image from 'next/image';
 import { Card, CardContent } from '../ui/card';
+import { SortableUrlList, type UrlItem } from './sortable-url-list';
 
 const initialState = { message: '', errors: {}, success: false };
 
@@ -35,6 +35,12 @@ function RadioForm({ radio, onFormSubmit }: { radio?: Radio | null; onFormSubmit
   const [state, dispatch] = useActionState(formAction, initialState);
   const { toast } = useToast();
 
+  const initialUrls = useMemo(() => 
+    (radio?.streamUrl || ['']).map((url, index) => ({ id: `${index}-${Date.now()}`, value: url })),
+    [radio]
+  );
+  const [urlItems, setUrlItems] = useState<UrlItem[]>(initialUrls);
+
   useEffect(() => {
     if (!state.message) return;
     
@@ -49,16 +55,34 @@ function RadioForm({ radio, onFormSubmit }: { radio?: Radio | null; onFormSubmit
             variant: 'destructive',
             title: <div className="flex items-center gap-2"><AlertCircle className="h-5 w-5" /><span>Error</span></div>,
             description: state.message,
+             ...((state.errors?.streamUrl || state.errors?.streamUrl?.length) && {
+                description: (
+                    <>
+                        {state.message}
+                        <ul className="mt-2 list-disc pl-5">
+                            {(state.errors.streamUrl as unknown as string[]).map((error: string, index: number) => (
+                                <li key={index}>{error}</li>
+                            ))}
+                        </ul>
+                    </>
+                )
+            })
         });
     }
-    // Reset state after showing toast
     state.message = '';
     state.success = false;
     state.errors = {};
   }, [state, onFormSubmit, toast]);
+  
+  const handleFormAction = (formData: FormData) => {
+    urlItems.forEach(item => {
+        formData.append('streamUrl[]', item.value);
+    });
+    dispatch(formData);
+  }
 
   return (
-    <form action={dispatch}>
+    <form action={handleFormAction}>
       <div className="grid gap-4 py-4">
         <div className="grid gap-2">
           <Label htmlFor="name">Nombre</Label>
@@ -76,9 +100,8 @@ function RadioForm({ radio, onFormSubmit }: { radio?: Radio | null; onFormSubmit
            {state.errors?.emisora && <p className="text-sm font-medium text-destructive">{state.errors.emisora.join(', ')}</p>}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="streamUrl">URLs de Stream (separadas por coma)</Label>
-          <Textarea id="streamUrl" name="streamUrl" defaultValue={radio?.streamUrl.join(', ')} placeholder="https://ejemplo.com/stream1.mp3, https://ejemplo.com/stream2.pls"/>
-           {state.errors?.streamUrl && <p className="text-sm font-medium text-destructive">{state.errors.streamUrl.join(', ')}</p>}
+          <Label>Opciones de Streaming</Label>
+           <SortableUrlList items={urlItems} setItems={setUrlItems} placeholder="https://ejemplo.com/stream.mp3" />
         </div>
       </div>
       <DialogFooter>

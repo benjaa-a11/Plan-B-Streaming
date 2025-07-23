@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useActionState } from 'react';
+import { useState, useEffect, useActionState, useMemo } from 'react';
 import type { Channel } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import Image from 'next/image';
 import { Checkbox } from '../ui/checkbox';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
+import { SortableUrlList, type UrlItem } from './sortable-url-list';
 
 const initialState = { message: '', errors: {}, success: false };
 
@@ -37,6 +38,12 @@ function ChannelForm({ channel, onFormSubmit }: { channel?: Channel | null; onFo
   const [state, dispatch] = useActionState(formAction, initialState);
   const { toast } = useToast();
 
+  const initialUrls = useMemo(() => 
+    (channel?.streamUrl || ['']).map((url, index) => ({ id: `${index}-${Date.now()}`, value: url })),
+    [channel]
+  );
+  const [urlItems, setUrlItems] = useState<UrlItem[]>(initialUrls);
+
   useEffect(() => {
     if (!state.message) return;
 
@@ -51,16 +58,34 @@ function ChannelForm({ channel, onFormSubmit }: { channel?: Channel | null; onFo
             variant: 'destructive',
             title: <div className="flex items-center gap-2"><AlertCircle className="h-5 w-5" /><span>Error</span></div>,
             description: state.message,
+            ...((state.errors?.streamUrl || state.errors?.streamUrl?.length) && {
+                description: (
+                    <>
+                        {state.message}
+                        <ul className="mt-2 list-disc pl-5">
+                            {(state.errors.streamUrl as unknown as string[]).map((error: string, index: number) => (
+                                <li key={index}>{error}</li>
+                            ))}
+                        </ul>
+                    </>
+                )
+            })
         });
     }
-    // Reset state after showing toast
     state.message = '';
     state.success = false;
     state.errors = {};
   }, [state, onFormSubmit, toast]);
+  
+  const handleFormAction = (formData: FormData) => {
+    urlItems.forEach(item => {
+        formData.append('streamUrl[]', item.value);
+    });
+    dispatch(formData);
+  }
 
   return (
-    <form action={dispatch}>
+    <form action={handleFormAction}>
       <div className="grid gap-4 py-4">
         <div className="grid gap-2">
           <Label htmlFor="name">Nombre</Label>
@@ -77,11 +102,12 @@ function ChannelForm({ channel, onFormSubmit }: { channel?: Channel | null; onFo
           <Input id="category" name="category" defaultValue={channel?.category} />
            {state.errors?.category && <p className="text-sm font-medium text-destructive">{state.errors.category.join(', ')}</p>}
         </div>
+        
         <div className="grid gap-2">
-          <Label htmlFor="streamUrl">URLs de Stream (separadas por coma)</Label>
-          <Textarea id="streamUrl" name="streamUrl" defaultValue={channel?.streamUrl.join(', ')} placeholder="https://ejemplo.com/stream1.m3u8, https://ejemplo.com/stream2.m3u8"/>
-           {state.errors?.streamUrl && <p className="text-sm font-medium text-destructive">{state.errors.streamUrl.join(', ')}</p>}
+          <Label>Opciones de Streaming</Label>
+          <SortableUrlList items={urlItems} setItems={setUrlItems} placeholder="https://ejemplo.com/stream.m3u8" />
         </div>
+
         <div className="grid gap-2">
           <Label htmlFor="description">Descripción</Label>
           <Textarea id="description" name="description" defaultValue={channel?.description} />

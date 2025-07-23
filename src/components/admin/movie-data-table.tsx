@@ -18,6 +18,7 @@ import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertic
 import Image from 'next/image';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Card, CardContent } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
 
 const initialState = { message: '', errors: {}, success: false };
 
@@ -98,9 +99,17 @@ function MovieForm({ movie, onFormSubmit }: { movie?: Movie | null; onFormSubmit
                     <Label htmlFor="posterUrl">URL de Póster (Opcional)</Label>
                     <Input id="posterUrl" name="posterUrl" defaultValue={movie?.posterUrl} />
                 </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="heroImageUrl">URL de Imagen para Hero (Opcional)</Label>
+                    <Input id="heroImageUrl" name="heroImageUrl" defaultValue={movie?.heroImageUrl} />
+                </div>
                  <div className="grid gap-2">
                     <Label htmlFor="synopsis">Sinopsis (Opcional)</Label>
                     <Textarea id="synopsis" name="synopsis" defaultValue={movie?.synopsis} />
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="isHero" name="isHero" defaultChecked={movie?.isHero} />
+                    <Label htmlFor="isHero">Destacar en el Hero</Label>
                 </div>
              </div>
         </div>
@@ -241,6 +250,7 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
               <TableHead className="w-[80px]">Póster</TableHead>
               <TableHead>Título</TableHead>
               <TableHead>Formato</TableHead>
+              <TableHead>Hero</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -252,6 +262,7 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
                 </TableCell>
                 <TableCell className="font-medium">{movie.title}</TableCell>
                 <TableCell>{movie.format}</TableCell>
+                <TableCell>{movie.isHero ? 'Sí' : 'No'}</TableCell>
                 <TableCell className="text-right">
                   <div className='inline-flex'>
                       <Button variant="ghost" size="icon" onClick={() => handleEditClick(movie)}>
@@ -265,7 +276,7 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   No hay películas para mostrar.
                 </TableCell>
               </TableRow>
