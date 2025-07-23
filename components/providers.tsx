@@ -30,4 +30,3 @@ export function Providers({ children, channelCategories, movieCategories }: Prov
         </ThemeProvider>
     );
 }
-
