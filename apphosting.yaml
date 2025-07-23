@@ -1,6 +1,17 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
+# Specifies the build and server configuration for your backend.
+build:
+  # Specifies the Next.js build preset.
+  # https://firebase.google.com/docs/app-hosting/build-presets
+  buildPreset: nextjs
+
+serve:
+  # Specifies that the server should serve the Next.js standalone output.
+  # This is the standard output for Next.js apps.
+  server: .next/standalone
+
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
