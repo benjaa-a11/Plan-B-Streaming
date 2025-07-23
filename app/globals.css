@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 96%; /* #F1F5F8 - Light Grey Blue */
+    --foreground: 205 30% 15%; /* #1C2B33 - Dark Slate Blue */
+    --card: 210 20% 99%; /* Almost White */
+    --card-foreground: 205 30% 15%;
+    --popover: 210 20% 99%;
+    --popover-foreground: 205 30% 15%;
+    --primary: 224 100% 44%; /* #0064E0 - Bright Blue */
+    --primary-foreground: 210 20% 98%;
+    --secondary: 210 20% 92%;
+    --secondary-foreground: 205 30% 15%;
+    --muted: 210 20% 92%;
+    --muted-foreground: 205 20% 40%;
+    --accent: 217 100% 50%; /* #0082FB - Lighter Blue */
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 210 15% 88%;
+    --input: 210 15% 88%;
+    --ring: 224 100% 44%;
+    --radius: 0.75rem;
+    --chart-1: 224 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+
+  .dark {
+    --background: 224 71% 4%; /* #09090B - Near Black */
+    --foreground: 210 40% 98%; /* Almost White */
+    --card: 224 71% 5.5%; /* Slightly Lighter Black */
+    --card-foreground: 210 40% 98%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%; /* #3B82F6 - Brighter Blue */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+    --chart-1: 217 91% 60%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  @media (max-width: 768px) {
+    body {
+      @apply scrollbar-hide;
+    }
+  }
+}
