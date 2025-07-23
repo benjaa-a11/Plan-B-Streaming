@@ -1,8 +1,8 @@
+
 "use client";
 
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -16,9 +16,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Moon, Sun, Monitor, Trash2, Download, CheckCircle, AlertCircle, Info } from "lucide-react";
+import { Moon, Sun, Monitor, Trash2, Download, CheckCircle, AlertCircle, Info, Palette, Smartphone, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -32,37 +33,52 @@ interface BeforeInstallPromptEvent extends Event {
 function SettingsPageSkeleton() {
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="space-y-12">
-        <Skeleton className="h-10 w-48 rounded-md" />
-        <div className="space-y-8">
-          {[...Array(3)].map((_, i) => (
-            <div key={i}>
+      <div className="space-y-8">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
               <Skeleton className="h-7 w-32 rounded-md" />
               <Skeleton className="mt-2 h-4 w-64 rounded-md" />
-              <Separator className="my-6" />
-              <div className="flex items-center justify-between">
+            </CardHeader>
+            <CardContent>
+               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <Skeleton className="h-5 w-40" />
                   <Skeleton className="h-4 w-full max-w-lg" />
                 </div>
                 <Skeleton className="h-10 w-28 rounded-md" />
               </div>
-            </div>
-          ))}
-        </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );
 }
 
-const SettingsRow = ({ title, description, children }: { title: string; description: string; children: React.ReactNode }) => (
-    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+const SettingsRow = ({ title, description, children }: { title: string; description: string; children: ReactNode }) => (
+    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between border-t pt-6">
         <div className="flex-grow">
-        <h3 className="text-lg font-medium text-foreground">{title}</h3>
+        <h3 className="text-base font-medium text-foreground">{title}</h3>
         <p className="text-sm text-muted-foreground">{description}</p>
         </div>
         <div className="w-full shrink-0 sm:w-auto">{children}</div>
     </div>
+);
+
+const SettingsCard = ({ icon, title, description, children }: { icon: ReactNode, title: string, description: string, children: ReactNode }) => (
+  <Card className="opacity-0 animate-fade-in-up">
+    <CardHeader className="flex flex-row items-start gap-4 space-y-0">
+      <div className="flex-shrink-0 text-primary">{icon}</div>
+      <div>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </div>
+    </CardHeader>
+    <CardContent>
+      {children}
+    </CardContent>
+  </Card>
 );
 
 export default function SettingsPage() {
@@ -155,15 +171,16 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="space-y-12">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Ajustes</h1>
+      <div className="space-y-8">
         
-        <section className="space-y-6">
-          <h2 className="text-2xl font-semibold tracking-tight">Apariencia</h2>
-          <Separator />
+        <SettingsCard
+          icon={<Palette size={32} strokeWidth={1.5} />}
+          title="Apariencia"
+          description="Personaliza la combinación de colores y el aspecto visual de la aplicación."
+        >
           <SettingsRow
             title="Tema"
-            description="Personaliza el aspecto de la aplicación."
+            description="Selecciona entre claro, oscuro o el tema de tu sistema."
           >
             <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted p-1">
               {themeOptions.map((option) => (
@@ -183,14 +200,16 @@ export default function SettingsPage() {
               ))}
             </div>
           </SettingsRow>
-        </section>
+        </SettingsCard>
 
-        <section className="space-y-6">
-          <h2 className="text-2xl font-semibold tracking-tight">Aplicación</h2>
-          <Separator />
+        <SettingsCard
+          icon={<Smartphone size={32} strokeWidth={1.5} />}
+          title="Aplicación"
+          description="Instala la aplicación en tu dispositivo para un acceso más rápido y una mejor experiencia."
+        >
           <SettingsRow
             title="Instalar Aplicación"
-            description="Añade Plan B a tu pantalla de inicio para un acceso más rápido."
+            description="Añade Plan B a tu pantalla de inicio como una aplicación."
           >
             {isStandalone ? (
               <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
@@ -209,14 +228,16 @@ export default function SettingsPage() {
                 </Button>
             )}
           </SettingsRow>
-        </section>
-
-        <section className="space-y-6">
-          <h2 className="text-2xl font-semibold tracking-tight">Datos</h2>
-           <Separator />
+        </SettingsCard>
+        
+        <SettingsCard
+          icon={<Database size={32} strokeWidth={1.5} />}
+          title="Datos de la Aplicación"
+          description="Gestiona los datos de la aplicación almacenados en este dispositivo."
+        >
           <SettingsRow
             title="Borrar datos de navegación"
-            description="Elimina favoritos e historial de canales guardados en este dispositivo."
+            description="Elimina favoritos e historial de canales guardados localmente."
           >
              <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -244,21 +265,23 @@ export default function SettingsPage() {
                 </AlertDialogContent>
               </AlertDialog>
           </SettingsRow>
-        </section>
-
-        <section className="space-y-6">
-          <h2 className="text-2xl font-semibold tracking-tight">Información</h2>
-          <Separator />
-          <div className="flex items-center gap-4 rounded-lg border bg-card p-4">
-             <Info className="h-10 w-10 text-primary flex-shrink-0" />
-             <div>
+        </SettingsCard>
+        
+        <SettingsCard
+          icon={<Info size={32} strokeWidth={1.5} />}
+          title="Información"
+          description="Detalles sobre la versión actual de la aplicación."
+        >
+           <div className="flex items-center gap-4 border-t pt-6">
+             <div className="flex-grow">
                 <h3 className="font-semibold text-foreground">Plan B Streaming</h3>
                 <p className="text-sm text-muted-foreground">Versión 1.0.0 · Creado con ❤️ para la comunidad.</p>
              </div>
           </div>
-        </section>
+        </SettingsCard>
 
       </div>
     </div>
   );
 }
+
