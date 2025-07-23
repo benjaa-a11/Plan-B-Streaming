@@ -5,5 +5,5 @@ export default function MoviesLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return <div className="w-full bg-background">{children}</div>;
 }
