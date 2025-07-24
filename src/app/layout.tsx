@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { getCategories, getMovieCategories } from "@/lib/actions";
 import { Providers } from "@/components/providers";
 import { Analytics } from "@vercel/analytics/next";
-import LayoutWrapper from "@/components/layout-wrapper";
 
 const fontInter = Inter({
   subsets: ['latin'],
@@ -63,9 +62,7 @@ export default async function RootLayout({
           channelCategories={channelCategories} 
           movieCategories={movieCategories}
         >
-          <LayoutWrapper>
-            {children}
-          </LayoutWrapper>
+          {children}
         </Providers>
         <Analytics />
       </body>
