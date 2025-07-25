@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useActionState } from 'react';
+import { useState, useEffect, useActionState, useMemo } from 'react';
 import type { Tournament } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { useFormStatus } from 'react-dom';
 import { addTournament, updateTournament, deleteTournament } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertical } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertical, Search } from 'lucide-react';
 import Image from 'next/image';
 import { Card, CardContent } from '../ui/card';
 
@@ -132,7 +132,14 @@ export default function TournamentDataTable({ data }: { data: Tournament[] }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+
+  const filteredData = useMemo(() => {
+    return data.filter(tournament =>
+      tournament.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [data, searchTerm]);
 
   const handleEditClick = (tournament: Tournament) => {
     setSelectedTournament(tournament);
@@ -175,8 +182,17 @@ export default function TournamentDataTable({ data }: { data: Tournament[] }) {
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
-        <Button onClick={handleAddClick}>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2 md:gap-4">
+        <div className="relative w-full md:flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input 
+            placeholder="Buscar por nombre..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Button onClick={handleAddClick} className="w-full md:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Añadir Torneo
         </Button>
@@ -225,7 +241,7 @@ export default function TournamentDataTable({ data }: { data: Tournament[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data && data.length > 0 ? data.map((tournament) => (
+            {filteredData.length > 0 ? filteredData.map((tournament) => (
               <TableRow key={tournament.id} className="opacity-0 animate-fade-in-up">
                 <TableCell>
                   {tournament.logoUrl?.[0] ? (
@@ -252,7 +268,7 @@ export default function TournamentDataTable({ data }: { data: Tournament[] }) {
             )) : (
               <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">
-                  No hay torneos para mostrar.
+                  No se encontraron torneos.
                 </TableCell>
               </TableRow>
             )}
@@ -262,8 +278,8 @@ export default function TournamentDataTable({ data }: { data: Tournament[] }) {
 
        {/* Mobile Cards */}
       <div className="md:hidden space-y-4">
-        {data && data.length > 0 ? (
-          data.map((tournament) => (
+        {filteredData.length > 0 ? (
+          filteredData.map((tournament) => (
              <AdminTournamentCard
                 key={tournament.id}
                 tournament={tournament}
@@ -273,7 +289,7 @@ export default function TournamentDataTable({ data }: { data: Tournament[] }) {
           ))
         ) : (
           <div className="text-center py-10">
-            <p>No hay torneos para mostrar.</p>
+            <p>No se encontraron torneos.</p>
           </div>
         )}
       </div>

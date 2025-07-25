@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useActionState } from 'react';
+import { useState, useEffect, useActionState, useMemo } from 'react';
 import type { Movie } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useFormStatus } from 'react-dom';
 import { addMovie, updateMovie, deleteMovie } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertical } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertical, Search } from 'lucide-react';
 import Image from 'next/image';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Card, CardContent } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const initialState = { message: '', errors: {}, success: false };
 
@@ -161,7 +162,20 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const { toast } = useToast();
+
+  const categories = useMemo(() => ['all', ...Array.from(new Set(data.flatMap(m => m.category)))], [data]);
+
+  const filteredData = useMemo(() => {
+    return data.filter(movie => {
+      const matchesSearch = movie.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = categoryFilter === 'all' || movie.category.includes(categoryFilter);
+      return matchesSearch && matchesCategory;
+    });
+  }, [data, searchTerm, categoryFilter]);
+
 
   const handleEditClick = (movie: Movie) => {
     setSelectedMovie(movie);
@@ -204,11 +218,32 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
-        <Button onClick={handleAddClick}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Añadir Película
-        </Button>
+       <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2 md:gap-4">
+        <div className="relative w-full md:flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input 
+            placeholder="Buscar por título..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex w-full md:w-auto items-center gap-2">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Filtrar por categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map(cat => (
+                <SelectItem key={cat} value={cat}>{cat === 'all' ? 'Todas las categorías' : cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={handleAddClick} className="w-full md:w-auto">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Añadir Película
+          </Button>
+        </div>
       </div>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -255,7 +290,7 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data && data.length > 0 ? data.map((movie) => (
+            {filteredData.length > 0 ? filteredData.map((movie) => (
               <TableRow key={movie.id} className="opacity-0 animate-fade-in-up">
                 <TableCell>
                   <Image unoptimized src={movie.posterUrl} alt={movie.title} width={40} height={60} className="object-cover rounded-md border p-1" />
@@ -277,7 +312,7 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
             )) : (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
-                  No hay películas para mostrar.
+                  No se encontraron películas.
                 </TableCell>
               </TableRow>
             )}
@@ -287,8 +322,8 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
 
        {/* Mobile Cards */}
       <div className="md:hidden space-y-4">
-        {data && data.length > 0 ? (
-          data.map((movie) => (
+        {filteredData.length > 0 ? (
+          filteredData.map((movie) => (
              <AdminMovieCard
                 key={movie.id}
                 movie={movie}
@@ -298,7 +333,7 @@ export default function MovieDataTable({ data }: { data: Movie[] }) {
           ))
         ) : (
           <div className="text-center py-10">
-            <p>No hay películas para mostrar.</p>
+            <p>No se encontraron películas.</p>
           </div>
         )}
       </div>

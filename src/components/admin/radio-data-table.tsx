@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { useFormStatus } from 'react-dom';
 import { addRadio, updateRadio, deleteRadio } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertical } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertical, Search } from 'lucide-react';
 import Image from 'next/image';
 import { Card, CardContent } from '../ui/card';
 import { SortableUrlList, type UrlItem } from './sortable-url-list';
@@ -150,7 +150,14 @@ export default function RadioDataTable({ data }: { data: Radio[] }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedRadio, setSelectedRadio] = useState<Radio | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+
+  const filteredData = useMemo(() => {
+    return data.filter(radio =>
+      radio.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [data, searchTerm]);
 
   const handleEditClick = (radio: Radio) => {
     setSelectedRadio(radio);
@@ -193,8 +200,17 @@ export default function RadioDataTable({ data }: { data: Radio[] }) {
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
-        <Button onClick={handleAddClick}>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2 md:gap-4">
+        <div className="relative w-full md:flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+        </div>
+        <Button onClick={handleAddClick} className="w-full md:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Añadir Radio
         </Button>
@@ -243,7 +259,7 @@ export default function RadioDataTable({ data }: { data: Radio[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data && data.length > 0 ? data.map((radio) => (
+            {filteredData.length > 0 ? filteredData.map((radio) => (
               <TableRow key={radio.id} className="opacity-0 animate-fade-in-up">
                 <TableCell>
                   <Image unoptimized src={radio.logoUrl} alt={radio.name} width={40} height={40} className="object-contain rounded-md border p-1" />
@@ -264,7 +280,7 @@ export default function RadioDataTable({ data }: { data: Radio[] }) {
             )) : (
               <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">
-                  No hay radios para mostrar.
+                  No se encontraron radios.
                 </TableCell>
               </TableRow>
             )}
@@ -274,8 +290,8 @@ export default function RadioDataTable({ data }: { data: Radio[] }) {
 
        {/* Mobile Cards */}
       <div className="md:hidden space-y-4">
-        {data && data.length > 0 ? (
-          data.map((radio) => (
+        {filteredData.length > 0 ? (
+          filteredData.map((radio) => (
              <AdminRadioCard
                 key={radio.id}
                 radio={radio}
@@ -285,7 +301,7 @@ export default function RadioDataTable({ data }: { data: Radio[] }) {
           ))
         ) : (
           <div className="text-center py-10">
-            <p>No hay radios para mostrar.</p>
+            <p>No se encontraron radios.</p>
           </div>
         )}
       </div>

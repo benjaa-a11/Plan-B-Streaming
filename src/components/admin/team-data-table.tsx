@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useActionState } from 'react';
+import { useState, useEffect, useActionState, useMemo } from 'react';
 import type { Team } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,10 @@ import { Label } from '@/components/ui/label';
 import { useFormStatus } from 'react-dom';
 import { addTeam, updateTeam, deleteTeam } from '@/lib/admin-actions';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertical } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, AlertCircle, MoreVertical, Search } from 'lucide-react';
 import Image from 'next/image';
 import { Card, CardContent } from '../ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const initialState = { message: '', errors: {}, success: false };
 
@@ -121,7 +122,19 @@ export default function TeamDataTable({ data }: { data: Team[] }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [countryFilter, setCountryFilter] = useState('all');
   const { toast } = useToast();
+
+  const countries = useMemo(() => ['all', ...Array.from(new Set(data.map(t => t.country)))], [data]);
+
+  const filteredData = useMemo(() => {
+    return data.filter(team => {
+      const matchesSearch = team.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCountry = countryFilter === 'all' || team.country === countryFilter;
+      return matchesSearch && matchesCountry;
+    });
+  }, [data, searchTerm, countryFilter]);
 
   const handleEditClick = (team: Team) => {
     setSelectedTeam(team);
@@ -164,11 +177,32 @@ export default function TeamDataTable({ data }: { data: Team[] }) {
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
-        <Button onClick={handleAddClick}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Añadir Equipo
-        </Button>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2 md:gap-4">
+        <div className="relative w-full md:flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input 
+            placeholder="Buscar por nombre..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex w-full md:w-auto items-center gap-2">
+          <Select value={countryFilter} onValueChange={setCountryFilter}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Filtrar por país" />
+            </SelectTrigger>
+            <SelectContent>
+              {countries.map(country => (
+                <SelectItem key={country} value={country}>{country === 'all' ? 'Todos los países' : country}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={handleAddClick} className="w-full md:w-auto">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Añadir Equipo
+          </Button>
+        </div>
       </div>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -214,7 +248,7 @@ export default function TeamDataTable({ data }: { data: Team[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data && data.length > 0 ? data.map((team) => (
+            {filteredData.length > 0 ? filteredData.map((team) => (
               <TableRow key={team.id} className="opacity-0 animate-fade-in-up">
                 <TableCell>
                   <Image unoptimized src={team.logoUrl} alt={team.name} width={40} height={40} className="object-contain rounded-md border p-1" />
@@ -235,7 +269,7 @@ export default function TeamDataTable({ data }: { data: Team[] }) {
             )) : (
               <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">
-                  No hay equipos para mostrar.
+                  No se encontraron equipos.
                 </TableCell>
               </TableRow>
             )}
@@ -245,8 +279,8 @@ export default function TeamDataTable({ data }: { data: Team[] }) {
 
         {/* Mobile Cards */}
       <div className="md:hidden space-y-4">
-        {data && data.length > 0 ? (
-          data.map((team) => (
+        {filteredData.length > 0 ? (
+          filteredData.map((team) => (
              <AdminTeamCard
                 key={team.id}
                 team={team}
@@ -256,7 +290,7 @@ export default function TeamDataTable({ data }: { data: Team[] }) {
           ))
         ) : (
           <div className="text-center py-10">
-            <p>No hay equipos para mostrar.</p>
+            <p>No se encontraron equipos.</p>
           </div>
         )}
       </div>
