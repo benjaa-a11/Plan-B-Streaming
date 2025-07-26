@@ -1,3 +1,4 @@
+
 import { getMovies, getAppStatus } from "@/lib/actions";
 import MovieBrowser from "@/components/movie-browser";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
