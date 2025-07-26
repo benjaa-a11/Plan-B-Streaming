@@ -136,12 +136,6 @@ export default function Header() {
         
         <div className="flex-none">
             <nav className="hidden items-center md:flex">
-              <Button asChild variant={pathname.startsWith('/peliculas') ? "secondary" : "ghost"}>
-                <Link href="/peliculas">
-                  <Popcorn className="h-5 w-5 mr-2" />
-                  Películas
-                </Link>
-              </Button>
                <Button asChild variant={pathname.startsWith('/radio') ? "secondary" : "ghost"}>
                 <Link href="/radio">
                   <Radio className="h-5 w-5 mr-2" />

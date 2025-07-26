@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -8,7 +9,6 @@ import { useState, useEffect } from "react";
 
 const navItems = [
   { href: "/", label: "Inicio", icon: Home },
-  { href: "/peliculas", label: "Películas", icon: Popcorn },
   { href: "/radio", label: "Radio", icon: Radio },
   { href: "/favoritos", label: "Favoritos", icon: Heart },
   { href: "/ajustes", label: "Ajustes", icon: Settings },
