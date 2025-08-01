@@ -13,7 +13,7 @@ type AudioPlayerProps = {
   onPrev: () => void;
   isFirst: boolean;
   isLast: boolean;
-};
+}; 
 
 export default function AudioPlayer({ radio, currentStreamUrl, onNext, onPrev, isFirst, isLast }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
