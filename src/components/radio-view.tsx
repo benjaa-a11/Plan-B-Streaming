@@ -1,8 +1,10 @@
+
 "use client";
 
 import Link from "next/link";
 import { ArrowLeft, SwitchCamera } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from 'next/dynamic';
 
 import type { Radio } from "@/types";
@@ -16,15 +18,29 @@ const AudioPlayer = dynamic(() => import('@/components/audio-player'), {
 
 type RadioViewProps = {
   radio: Radio;
+  allRadios: Radio[];
   otherRadios: Radio[];
 };
 
-export default function RadioView({ radio, otherRadios }: RadioViewProps) {
+export default function RadioView({ radio, allRadios, otherRadios }: RadioViewProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [currentStreamIndex, setCurrentStreamIndex] = useState(0);
 
   const streamLinks = radio.streamUrl || [];
   const currentStreamUrl = streamLinks[currentStreamIndex];
+
+  const currentRadioIndex = allRadios.findIndex(r => r.id === radio.id);
+  const isFirstRadio = currentRadioIndex === 0;
+  const isLastRadio = currentRadioIndex === allRadios.length - 1;
+
+  const navigateToRadio = useCallback((direction: 'next' | 'prev') => {
+    let nextIndex = direction === 'next' ? currentRadioIndex + 1 : currentRadioIndex - 1;
+    if (nextIndex >= 0 && nextIndex < allRadios.length) {
+      const nextRadioId = allRadios[nextIndex].id;
+      router.push(`/radio/${nextRadioId}`);
+    }
+  }, [currentRadioIndex, allRadios, router]);
 
   const handleSwitchStream = () => {
     const nextIndex = (currentStreamIndex + 1) % streamLinks.length;
@@ -58,7 +74,14 @@ export default function RadioView({ radio, otherRadios }: RadioViewProps) {
         </header>
         <main className="flex-1 overflow-y-auto">
             <div className="container mx-auto p-4 md:p-8">
-                <AudioPlayer radio={radio} currentStreamUrl={currentStreamUrl} />
+                <AudioPlayer 
+                  radio={radio} 
+                  currentStreamUrl={currentStreamUrl}
+                  onNext={() => navigateToRadio('next')}
+                  onPrev={() => navigateToRadio('prev')}
+                  isFirst={isFirstRadio}
+                  isLast={isLastRadio}
+                />
 
                 {streamLinks.length > 1 && (
                     <div className="mt-6 flex justify-center">
