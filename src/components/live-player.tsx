@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -256,8 +257,9 @@ export default function LivePlayer({ src }: LivePlayerProps) {
       <video ref={videoRef} className="max-h-full w-full object-contain" playsInline autoPlay onClick={handlePlayerClick} />
       
       {isLoading && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10 pointer-events-none">
-          <Loader2 className="w-12 h-12 text-white animate-spin" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 z-10 pointer-events-none text-white">
+          <Loader2 className="w-12 h-12 animate-spin" />
+          <p className="mt-4 text-lg font-semibold">Cargando transmisión...</p>
         </div>
       )}
 
