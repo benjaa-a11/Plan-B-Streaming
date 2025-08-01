@@ -19,7 +19,7 @@ const AudioPlayer = dynamic(() => import('@/components/audio-player'), {
 type RadioViewProps = {
   radio: Radio;
   allRadios: Radio[];
-  otherRadios: Radio[];
+  otherRadios: Radio[]; 
 };
 
 export default function RadioView({ radio, allRadios, otherRadios }: RadioViewProps) {
