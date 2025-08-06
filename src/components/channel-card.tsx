@@ -2,7 +2,8 @@ import type { Channel } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
 import { Clapperboard, PlayCircle } from "lucide-react";
-import { memo } from "react";
+import { memo, useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 
 type ChannelCardProps = {
   channel: Channel;
@@ -10,6 +11,15 @@ type ChannelCardProps = {
 };
 
 const ChannelCard = memo(function ChannelCard({ channel, index }: ChannelCardProps) {
+  const { resolvedTheme } = useTheme();
+  const [logoUrl, setLogoUrl] = useState(channel.logoUrl?.[0] || 'https://placehold.co/128x128.png');
+
+  useEffect(() => {
+    const darkLogo = channel.logoUrl?.[0];
+    const lightLogo = channel.logoUrl?.[1];
+    setLogoUrl((resolvedTheme === 'dark' ? darkLogo : (lightLogo || darkLogo)) || 'https://placehold.co/128x128.png');
+  }, [resolvedTheme, channel.logoUrl]);
+
   return (
     <Link 
       href={`/canal/${channel.id}`} 
@@ -23,10 +33,10 @@ const ChannelCard = memo(function ChannelCard({ channel, index }: ChannelCardPro
             <PlayCircle className="h-12 w-12 text-white/80 transform transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          {channel.logoUrl ? (
+          {channel.logoUrl && channel.logoUrl.length > 0 ? (
             <Image
               unoptimized
-              src={channel.logoUrl}
+              src={logoUrl}
               alt={`Logo de ${channel.name}`}
               fill
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
