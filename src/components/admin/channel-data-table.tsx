@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useActionState, useMemo } from 'react';
@@ -21,6 +22,7 @@ import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
 import { SortableUrlList, type UrlItem } from './sortable-url-list';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useTheme } from 'next-themes';
 
 const initialState = { message: '', errors: {}, success: false };
 
@@ -93,10 +95,17 @@ function ChannelForm({ channel, onFormSubmit }: { channel?: Channel | null; onFo
           <Input id="name" name="name" defaultValue={channel?.name} />
           {state.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name.join(', ')}</p>}
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="logoUrl">URL del Logo</Label>
-          <Input id="logoUrl" name="logoUrl" defaultValue={channel?.logoUrl} />
-           {state.errors?.logoUrl && <p className="text-sm font-medium text-destructive">{state.errors.logoUrl.join(', ')}</p>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+                <Label htmlFor="logoUrlDark">URL Logo (Tema Oscuro)</Label>
+                <Input id="logoUrlDark" name="logoUrlDark" defaultValue={channel?.logoUrl?.[0] ?? ''} />
+                {state.errors?.logoUrlDark && <p className="text-sm font-medium text-destructive">{state.errors.logoUrlDark.join(', ')}</p>}
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="logoUrlLight">URL Logo (Tema Claro)</Label>
+                <Input id="logoUrlLight" name="logoUrlLight" defaultValue={channel?.logoUrl?.[1] ?? channel?.logoUrl?.[0] ?? ''} />
+                {state.errors?.logoUrlLight && <p className="text-sm font-medium text-destructive">{state.errors.logoUrlLight.join(', ')}</p>}
+            </div>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="category">Categoría</Label>
@@ -138,11 +147,26 @@ function ChannelForm({ channel, onFormSubmit }: { channel?: Channel | null; onFo
   );
 }
 
+const ChannelLogo = ({ channel }: { channel: Channel }) => {
+    const { resolvedTheme } = useTheme();
+    const [logo, setLogo] = useState(channel.logoUrl?.[0] || 'https://placehold.co/128x128.png');
+
+    useEffect(() => {
+        const darkLogo = channel.logoUrl?.[0];
+        const lightLogo = channel.logoUrl?.[1];
+        setLogo(resolvedTheme === 'dark' ? (darkLogo || lightLogo) : (lightLogo || darkLogo));
+    }, [resolvedTheme, channel.logoUrl]);
+
+    return (
+        <Image src={logo} alt={channel.name} width={48} height={48} className="object-contain rounded-md border p-1 h-12 w-12" unoptimized />
+    );
+};
+
 function AdminChannelCard({ channel, onEdit, onDelete }: { channel: Channel; onEdit: (channel: Channel) => void; onDelete: (channel: Channel) => void; }) {
     return (
         <Card className="opacity-0 animate-fade-in-up">
             <CardContent className="p-4 flex items-center gap-4">
-                <Image src={channel.logoUrl} alt={channel.name} width={48} height={48} className="object-contain rounded-md border p-1 h-12 w-12" unoptimized/>
+                <ChannelLogo channel={channel} />
                 <div className="flex-1 space-y-1">
                     <p className="font-semibold">{channel.name}</p>
                     <p className="text-sm text-muted-foreground">{channel.category}</p>
@@ -308,7 +332,7 @@ export default function ChannelDataTable({ data }: { data: Channel[] }) {
             {filteredData.length > 0 ? filteredData.map((channel) => (
               <TableRow key={channel.id} className="opacity-0 animate-fade-in-up">
                 <TableCell>
-                  <Image src={channel.logoUrl} alt={channel.name} width={40} height={40} className="object-contain rounded-md border p-1" unoptimized/>
+                  <ChannelLogo channel={channel} />
                 </TableCell>
                 <TableCell className="font-medium">{channel.name}</TableCell>
                 <TableCell>{channel.category}</TableCell>
