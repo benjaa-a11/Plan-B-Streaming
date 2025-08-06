@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -37,19 +38,25 @@ const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 const ChannelSchema = z.object({
   name: z.string().min(1, { message: 'El nombre es requerido.' }),
-  logoUrl: z.string().url({ message: 'Debe ser una URL de logo válida.' }),
+  logoUrlDark: z.string().url({ message: 'Debe ser una URL de logo válida para tema oscuro.' }).optional().or(z.literal('')),
+  logoUrlLight: z.string().url({ message: 'Debe ser una URL de logo válida para tema claro.' }).optional().or(z.literal('')),
   category: z.string().min(1, { message: 'La categoría es requerida.' }),
   description: z.string().optional(),
   streamUrl: z.array(z.string().url({ message: 'URL no válida.' })).min(1, { message: 'Se requiere al menos una URL de stream.' })
     .refine(urls => urls.every(url => url.trim().length > 0), { message: 'Ninguna URL puede estar vacía.' }),
   isHidden: z.boolean().optional(),
+}).refine(data => data.logoUrlDark || data.logoUrlLight, {
+  message: 'Se debe proporcionar al menos una URL de logo.',
+  path: ['logoUrlDark'], // Attach error to one of the logo fields
 });
+
 
 export async function addChannel(prevState: FormState, formData: FormData): Promise<FormState> {
   try {
     const rawData = {
         name: formData.get('name'),
-        logoUrl: formData.get('logoUrl'),
+        logoUrlDark: formData.get('logoUrlDark'),
+        logoUrlLight: formData.get('logoUrlLight'),
         category: formData.get('category'),
         description: formData.get('description'),
         streamUrl: formData.getAll('streamUrl[]').filter(Boolean),
@@ -66,7 +73,12 @@ export async function addChannel(prevState: FormState, formData: FormData): Prom
       };
     }
     
-    const { name } = validatedFields.data;
+    const { name, logoUrlDark, logoUrlLight, ...rest } = validatedFields.data;
+    const dataToSave = {
+        ...rest,
+        name,
+        logoUrl: [logoUrlDark, logoUrlLight].filter(Boolean),
+    };
     const id = slugify(name);
     const channelRef = doc(db, 'channels', id);
 
@@ -75,7 +87,7 @@ export async function addChannel(prevState: FormState, formData: FormData): Prom
       return { message: `Un canal con el ID '${id}' ya existe.`, success: false };
     }
 
-    await setDoc(channelRef, validatedFields.data);
+    await setDoc(channelRef, dataToSave);
     revalidatePath('/admin/channels');
     revalidatePath('/');
     return { message: 'Canal añadido exitosamente.', success: true, errors: {} };
@@ -92,7 +104,8 @@ export async function updateChannel(id: string, prevState: FormState, formData: 
   try {
      const rawData = {
         name: formData.get('name'),
-        logoUrl: formData.get('logoUrl'),
+        logoUrlDark: formData.get('logoUrlDark'),
+        logoUrlLight: formData.get('logoUrlLight'),
         category: formData.get('category'),
         description: formData.get('description'),
         streamUrl: formData.getAll('streamUrl[]').filter(Boolean),
@@ -109,8 +122,14 @@ export async function updateChannel(id: string, prevState: FormState, formData: 
       };
     }
 
+    const { logoUrlDark, logoUrlLight, ...rest } = validatedFields.data;
+    const dataToSave = {
+        ...rest,
+        logoUrl: [logoUrlDark, logoUrlLight].filter(Boolean),
+    };
+
     const channelRef = doc(db, 'channels', id);
-    await updateDoc(channelRef, validatedFields.data);
+    await updateDoc(channelRef, dataToSave);
     revalidatePath('/admin/channels');
     revalidatePath(`/canal/${id}`);
     revalidatePath('/');
