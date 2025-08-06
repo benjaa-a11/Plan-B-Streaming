@@ -2,7 +2,7 @@
 export type Channel = {
   id: string;
   name: string;
-  logoUrl: string;
+  logoUrl: string[];
   streamUrl: string[];
   category: string;
   description?: string;
@@ -12,7 +12,7 @@ export type Channel = {
 export type ChannelOption = {
   id: string;
   name: string;
-  logoUrl?: string;
+  logoUrl?: string[];
 };
 
 export type Match = {
