@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import Link from "next/link";
@@ -5,6 +7,7 @@ import Image from "next/image";
 import { ArrowLeft, Heart, SwitchCamera, VideoOff, Loader2 } from "lucide-react";
 import { useState, useMemo, memo, useEffect } from "react";
 import dynamic from 'next/dynamic';
+import { useTheme } from 'next-themes';
 
 import type { Channel } from "@/types";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -69,6 +72,7 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
   const { isFavorite, addFavorite, removeFavorite, isLoaded: favoritesAreLoaded } = useFavorites();
   const { recordView } = useChannelHistory();
   const { toast } = useToast();
+  const { resolvedTheme } = useTheme();
 
   const [currentStreamIndex, setCurrentStreamIndex] = useState(0);
 
@@ -85,6 +89,12 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
   );
   const currentStreamUrl = streamLinks[currentStreamIndex];
   const isHls = currentStreamUrl?.includes('.m3u8');
+  
+  const logoUrl = useMemo(() => {
+    const darkLogo = channel.logoUrl?.[0];
+    const lightLogo = channel.logoUrl?.[1];
+    return (resolvedTheme === 'dark' ? darkLogo : (lightLogo || darkLogo)) || 'https://placehold.co/128x128.png';
+  }, [resolvedTheme, channel.logoUrl]);
 
   const handleFavoriteClick = () => {
     if (isFav) {
@@ -126,8 +136,8 @@ const ChannelView = memo(function ChannelView({ channel, relatedChannels }: Chan
           </Button>
           <div className="flex items-center gap-3">
              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md">
-                {channel.logoUrl ? (
-                    <Image unoptimized src={channel.logoUrl} alt={`Logo de ${channel.name}`} fill className="object-contain" sizes="40px"/>
+                {logoUrl ? (
+                    <Image unoptimized src={logoUrl} alt={`Logo de ${channel.name}`} fill className="object-contain" sizes="40px"/>
                 ) : (
                     <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold">{channel.name.charAt(0)}</div>
                 )}
