@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -31,7 +32,7 @@ export function Providers({ children, channelCategories, movieCategories }: Prov
     return (
         <ThemeProvider
             attribute="class"
-            defaultTheme="dark"
+            defaultTheme="system"
             storageKey="plan-b-theme"
             enableSystem
         >
